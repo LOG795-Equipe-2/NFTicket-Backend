@@ -13,6 +13,13 @@ export class AppService {
     return 'Hello World!';
   }
 
+
+  /**
+   * This method proposes a example way of executing a transaction on the blockchain that 
+   * is hosted on the server. Note, a blockchain must be running, with an
+   * account Alice and the contract "addressbook".
+   * @returns 
+   */
   getTestEOSJs(): string {
     const defaultPrivateKey = "5JsfBNPgg25DV2uMp21fW4cqnJMiY7H4KTjiBXY2qVTtj9kRkqr"; // alice
     const signatureProvider = new JsSignatureProvider([defaultPrivateKey]);
