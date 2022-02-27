@@ -1,6 +1,16 @@
 
 # NFTicket-backend
 
+## Configuration
+
+On utilise le package `@nestjs/config` pour charger un fichier .env. [Tutoriel](https://docs.nestjs.com/techniques/configuration) sur comment avor accès aux variables
+
+Variables nécessaire dans le fichier .env
+```bash
+MONGO_URI # lien vers la BD Mongo
+```
+
+
 ## Description
 
 Composante backend de NFTicket
