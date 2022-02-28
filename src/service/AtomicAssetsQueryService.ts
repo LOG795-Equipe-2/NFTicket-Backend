@@ -16,7 +16,13 @@ import fetch from 'node-fetch'; // node only; not needed in browsers
 // The advantages might be more performance, but we will leave that for later.
 //
 
-export class AtomicAssetsService {
+export class AtomicAssetsQueryService {
+  rpc: JsonRpc;
+
+  constructor(nodeUrl){
+     this.rpc = new JsonRpc(nodeUrl, { fetch });
+  }
+
   ticketSchema = ObjectSchema([
     { name: 'name', type: 'string' },
     { name: 'id', type: 'int32' },
@@ -27,8 +33,6 @@ export class AtomicAssetsService {
     { name: 'rowNo', type: 'string' },
     { name: 'seatNo', type: 'string' }
   ]);
-
-  rpc = new JsonRpc('http://eos1.anthonybrochu.com:8888', { fetch });
 
   /**
    * Returns a collection from atomicAssets based on a collName Provided
@@ -97,10 +101,6 @@ export class AtomicAssetsService {
    * If no schemaName is provided, all schemas are returned
    */
   async getAssets(user, limit = 100): Promise<GetTableRowsResult> {
-    //let response = await this.api.getAsset(user, "1099511627776")
-   /* let response = await this.api.getAsset(user, "1099511627777")
-    return response;*/
-
     var response = await this.rpc.get_table_rows({
       json: true,               // Get the response as json
       code: 'atomicassets',      // Contract that we target

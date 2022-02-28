@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
 import { GetTableRowsResult } from 'eosjs/dist/eosjs-rpc-interfaces';
-import { AtomicAssetsService } from './service/AtomicAssetsService';
+import { AtomicAssetsQueryService } from './service/AtomicAssetsQueryService';
+
+import { ConfigService } from '@nestjs/config';
 
 // TODO (in the future): 
 // Update the fetching of data using the AtomicAssetsAPI.
@@ -20,7 +22,11 @@ const fetch = require('node-fetch'); // node only; not needed in browsers
 @Injectable()
 export class AppService {
 
-  atomicService = new AtomicAssetsService();
+  atomicService: AtomicAssetsQueryService;
+
+  constructor(private configService: ConfigService){
+      this.atomicService = new AtomicAssetsQueryService(configService.get('BLOCKCHAIN_NODE_URL'));
+  }
 
   getHello(): string {
     return 'Hello World!';
@@ -44,6 +50,6 @@ export class AppService {
       console.log(response3); 
     })()
 
-    return JSON.stringify(response3);
+    return response3;
   }
 }
