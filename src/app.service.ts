@@ -25,7 +25,7 @@ export class AppService {
   atomicService: AtomicAssetsQueryService;
 
   constructor(private configService: ConfigService){
-      this.atomicService = new AtomicAssetsQueryService(configService.get('BLOCKCHAIN_NODE_URL'));
+      this.atomicService = new AtomicAssetsQueryService(configService.get<string>('blockchainNodeUrl'));
   }
 
   getHello(): string {
