@@ -1,67 +1,49 @@
 import { Injectable } from '@nestjs/common';
 
-import { Api, JsonRpc, RpcError } from 'eosjs';
-import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
-import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig'; // development only
+import { GetTableRowsResult } from 'eosjs/dist/eosjs-rpc-interfaces';
+import { AtomicAssetsService } from './service/AtomicAssetsService';
+
+// TODO (in the future): 
+// Update the fetching of data using the AtomicAssetsAPI.
+// For now, we query the blockchain in a raw manner, but we could use the following js:
+// https://github.com/pinknetworkx/atomicassets-js
+//
+// But, in order to do that, we also need this:
+// https://github.com/pinknetworkx/eosio-contract-api
+// Which is an interface API for the blockchain
+//
+// The advantages might be more performance, but we will leave that for later.
+//
 
 const fetch = require('node-fetch'); // node only; not needed in browsers
-const { TextEncoder, TextDecoder } = require('util'); // node only; native TextEncoder/Decoder
 
 @Injectable()
 export class AppService {
+
+  atomicService = new AtomicAssetsService();
+
   getHello(): string {
     return 'Hello World!';
   }
 
-
   /**
-   * This method proposes a example way of executing a transaction on the blockchain that 
-   * is hosted on the server. Note, a blockchain must be running, with an
-   * account Alice and the contract "addressbook".
+   * This method proposes a example way of executing a transaction on the blockchain does not require
+   * auth.
+   * 
    * @returns 
    */
-  getTestEOSJs(): string {
-    const defaultPrivateKey = "5JsfBNPgg25DV2uMp21fW4cqnJMiY7H4KTjiBXY2qVTtj9kRkqr"; // alice
-    const signatureProvider = new JsSignatureProvider([defaultPrivateKey]);
+  async getTestEOSJs(): Promise<string> {
+    let response3
+    await (async () => {
+      let response2 = await this.atomicService.getSchemas('nftikanthony');
+      // console.log(this.ticketSchema);
+      response3 = await this.atomicService.getTemplates('nftikanthony');
 
-    const rpc = new JsonRpc('http://127.0.0.1:8888', { fetch });
+      let response: GetTableRowsResult = await this.atomicService.getAssets('anthony');
 
+      console.log(response3); 
+    })()
 
-    const api = new Api({ rpc, signatureProvider, textDecoder: new TextDecoder(), textEncoder: new TextEncoder() });
-
-    (async () => {
-      try{
-        const result = await api.transact({
-          actions: [{
-            account: 'addressbook',
-            name: 'upsert',
-            authorization: [{
-              actor: 'alice',
-              permission: 'active',
-            }],
-            data: {
-              user: 'alice',
-              first_name: 'alice',
-              last_name: 'liddell',
-              age: 24,
-              street: '123 drink me way',
-              city: 'wonderland',
-              state: 'amsterdam'
-            },
-          }]
-        }, {
-          blocksBehind: 3,
-          expireSeconds: 30,
-        }) as TransactResult;
-        console.dir(result);
-        console.dir(result.processed.action_traces);
-      } catch(e){
-        console.log('\nCaught exception: ' + e);
-        if (e instanceof RpcError)
-          console.log(JSON.stringify(e.json, null, 2));
-      }
-    })();
-
-    return 'Hello World EOS!';
+    return JSON.stringify(response3);
   }
 }
