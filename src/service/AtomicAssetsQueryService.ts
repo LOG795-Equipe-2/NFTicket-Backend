@@ -4,6 +4,8 @@ import {  deserialize, ObjectSchema } from "atomicassets"
 import { hexToUint8Array } from 'eosjs/dist/eosjs-serialize';
 import fetch from 'node-fetch'; // node only; not needed in browsers
 
+import * as TICKET_SCHEMA from '../schemas/ticketSchema.json'; // this ts file should still be imported fine
+
 // TODO: 
 // Update the fetching of data using the AtomicAssetsAPI.
 // For now, we query the blockchain in a raw manner, but we could use the following js:
@@ -18,21 +20,17 @@ import fetch from 'node-fetch'; // node only; not needed in browsers
 
 export class AtomicAssetsQueryService {
   rpc: JsonRpc;
+  ticketSchema;
 
   constructor(nodeUrl){
-     this.rpc = new JsonRpc(nodeUrl, { fetch });
+      this.rpc = new JsonRpc(nodeUrl, { fetch });
+      try{
+        //This might be replaced by a Database Item
+        this.ticketSchema = ObjectSchema(TICKET_SCHEMA);
+      } catch(err){
+        console.log(`Error reading file from disk: ${err}`)
+      }
   }
-
-  ticketSchema = ObjectSchema([
-    { name: 'name', type: 'string' },
-    { name: 'id', type: 'int32' },
-    { name: 'date', type: 'string' },
-    { name: 'hour', type: 'string' },
-    { name: 'locationName', type: 'string' },
-    { name: 'eventName', type: 'string' },   
-    { name: 'rowNo', type: 'string' },
-    { name: 'seatNo', type: 'string' }
-  ]);
 
   /**
    * Returns a collection from atomicAssets based on a collName Provided
