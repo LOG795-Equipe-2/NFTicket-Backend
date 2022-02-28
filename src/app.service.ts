@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { GetTableRowsResult } from 'eosjs/dist/eosjs-rpc-interfaces';
-import { AtomicAssetsQueryService } from './service/AtomicAssetsQueryService';
+import { AtomicAssetsQueryService } from './atomic-assets-query/atomic-assets-query.service';
 
 import { ConfigService } from '@nestjs/config';
 
@@ -40,16 +40,18 @@ export class AppService {
    */
   async getTestEOSJs(): Promise<string> {
     let response3
+    let response2
+    let response
     await (async () => {
-      let response2 = await this.atomicService.getSchemas('nftikanthony');
+       //response2 = await this.atomicService.getSchemas('nftikanthoth');
       // console.log(this.ticketSchema);
-      response3 = await this.atomicService.getTemplates('nftikanthony');
+      response3 = await this.atomicService.getTemplates('nftikanthoth');
 
-      let response: GetTableRowsResult = await this.atomicService.getAssets('anthony');
+      response = await this.atomicService.getAssets('anthony');
 
-      console.log(response3); 
+      console.log(response3.rows[0]); 
     })()
 
-    return response3;
+    return response;
   }
 }

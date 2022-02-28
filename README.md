@@ -15,6 +15,9 @@ MONGO_URI # lien vers la BD Mongo
 Variables pour déterminer l'URL de la node EOS dans le fichier .env
 ```bash
 BLOCKCHAIN_NODE_URL # default Value: http://eos1.anthonybrochu.com:8888
+CHAIN_ID # default Value: 5d5bbe6bb403e5ca8b087d382946807246b4dee094c7f5961e2bebd88f8c9c51
+APP_NAME # default Value: NFTicket
+TEMP_ACCOUNT_OWNER_ASSETS # Determine which account will hold the nft when they are created.
 ```
 
 ## Description
