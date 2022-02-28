@@ -47,11 +47,6 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Execute transactions on the blockchain using EOS js
-
-Documentation: https://developers.eos.io/manuals/eosjs/latest/how-to-guides/index
-
-
 
 ## Support
 
