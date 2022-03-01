@@ -1,0 +1,10 @@
+[
+    { "name": "name", "type": "string" },
+    { "name": "id", "type": "int32" },
+    { "name": "date", "type": "string" },
+    { "name": "hour", "type": "string" },
+    { "name": "locationName", "type": "string" },
+    { "name": "eventName", "type": "string" },   
+    { "name": "rowNo", "type": "string" },
+    { "name": "seatNo", "type": "string" }
+]

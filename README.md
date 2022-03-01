@@ -10,6 +10,12 @@ Variables nécessaire dans le fichier .env
 MONGO_URI # lien vers la BD Mongo
 ```
 
+### URL Blockchain EOS
+
+Variables pour déterminer l'URL de la node EOS dans le fichier .env
+```bash
+BLOCKCHAIN_NODE_URL # default Value: http://eos1.anthonybrochu.com:8888
+```
 
 ## Description
 
