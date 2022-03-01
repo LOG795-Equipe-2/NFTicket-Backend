@@ -8,8 +8,8 @@ import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-q
 
 import { Injectable } from '@nestjs/common';
 
-export class Ticket{
-    asset_id:string | null
+export class Ticket {
+    asset_id:string | null = null
     name:string
     date:string
     hour:string
@@ -19,7 +19,7 @@ export class Ticket{
     locationName:string
     eventName:string
 
-    constructor(name, date, hour, rowNo, seatNo, locationName, eventName){
+    constructor(name:string, date:string, hour:string, rowNo:string, seatNo:string, locationName:string, eventName:string){
         this.name = name;
         this.date = date
         this.hour = hour
@@ -55,7 +55,7 @@ export class NfticketTransactionService {
     atomicAssetContractAccountName: string
     tempAccountOwnerAssets: string
 
-    constructor(private configService: ConfigService){
+    constructor(private configService: ConfigService, private atomicAssetsService: AtomicAssetsQueryService){
         this.blockchainUrl = configService.get<string>('blockchainNodeUrl')
         this.appName = configService.get<string>('appName')
         this.chainId = configService.get<string>('chainId')
@@ -78,10 +78,9 @@ export class NfticketTransactionService {
     async createTickets(userName, collName, nbToCreate:number, ticket: Ticket) {
         let transactions = [];
 
-        let atomicAssetsService = new AtomicAssetsQueryService(this.blockchainUrl);
-
-        let collResults = await atomicAssetsService.getCollections(collName, 1)
-        console.log(collResults.rows);
+        let collResults = await this.atomicAssetsService.getCollections(collName, 1)
+        console.log("Get Collections results: ");
+        console.log(collResults.rows)
         if(collResults.rows.length != 1){
             transactions.push({
                 account: this.atomicAssetContractAccountName,
@@ -98,8 +97,9 @@ export class NfticketTransactionService {
             })
         }
 
-        let schemaColl = await atomicAssetsService.getSchemas(collName, ticket.getSchemaName(), 1)
-        console.log(schemaColl.rows);
+        let schemaColl = await this.atomicAssetsService.getSchemas(collName, ticket.getSchemaName(), 1)
+        console.log("Get Schemas results: ");
+        console.log(schemaColl.rows)
         if(collResults.rows.length != 1){
             transactions.push({
                 account: this.atomicAssetContractAccountName,
@@ -117,7 +117,8 @@ export class NfticketTransactionService {
         // need to find manually what will be the next template id on the blockchain.
         // We do this by counting the number of templates and adding one.
         // Little hackish for now.
-        let nextTemplateId = await atomicAssetsService.getTemplatesCount() + 1;
+        let nextTemplateId = await this.atomicAssetsService.getTemplatesCount() + 1;
+        console.log("Next Template Id Result: " + nextTemplateId);
 
         // Every time we create new assets, we will create a new template.
         // We could store the state of the templates, but for now it's easier like that.
@@ -163,6 +164,7 @@ export class NfticketTransactionService {
 
         return {
             transactionId: null,
+            transactionType: 'createTicket',
             transactionsBody: transactions
         };
     }

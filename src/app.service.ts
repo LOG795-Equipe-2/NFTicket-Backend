@@ -22,10 +22,7 @@ const fetch = require('node-fetch'); // node only; not needed in browsers
 @Injectable()
 export class AppService {
 
-  atomicService: AtomicAssetsQueryService;
-
-  constructor(private configService: ConfigService){
-      this.atomicService = new AtomicAssetsQueryService(configService.get<string>('blockchainNodeUrl'));
+  constructor(private configService: ConfigService, private atomicService: AtomicAssetsQueryService){
   }
 
   getHello(): string {

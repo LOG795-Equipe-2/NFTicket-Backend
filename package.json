@@ -27,6 +27,7 @@
     "@nestjs/mongoose": "^9.0.2",
     "@nestjs/platform-express": "^8.0.0",
     "atomicassets": "^1.4.2",
+    "cors": "^2.8.5",
     "eosjs": "^22.1.0",
     "mongoose": "^6.1.8",
     "reflect-metadata": "^0.1.13",
