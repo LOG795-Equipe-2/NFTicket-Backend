@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Req } from '@nestjs/common';
+import { Controller, Get, Post, Req, Query } from '@nestjs/common';
 import { NfticketTransactionService, Ticket } from './nfticket-transaction.service';
 import { Request } from 'express';
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 
+@ApiTags('nfticket-transaction')
 @Controller('nfticket-transaction')
 export class NfticketTransactionController {
     constructor(private readonly nfticketTransactionService: NfticketTransactionService) {}
@@ -11,6 +13,7 @@ export class NfticketTransactionController {
         return this.nfticketTransactionService.getHello();
     }
 
+    @ApiOperation({ summary: 'Receive parameters to use to connect to the blockchain' })
     @Get('/init')
     getInitiateTransactions(): string {
         return this.nfticketTransactionService.initiate();
@@ -21,23 +24,31 @@ export class NfticketTransactionController {
      * 
      * 
      */
+    @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to create the tickets', 
+                    description: 'It will include the transactions to create the schema and collections if they not already on the blockchain.' })
+    @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @Get('/createTickets')
-    getCreateTicket(@Req() request: Request){
-        let userName = request.query.userName
-
+    getCreateTicket(@Query('userName') userName: string,
+                    @Query('name') name: string,
+                    @Query('date') date: string,
+                    @Query('hour') hour: string,
+                    @Query('rowNo') rowNo: string,
+                    @Query('seatNo') seatNo: string,
+                    @Query('locationName') locationName: string,
+                    @Query('eventName') eventName: string){
         //TODO: Implement user validation
 
         let collName = 'nftikanthynu'
 
         let ticket:Ticket = new Ticket(
-            request.query.eventName as string,
-            request.query.date as string,
-            request.query.hour as string,
-            request.query.rowNo as string,
-            request.query.seatNo as string,
+            name as string,
+            date as string,
+            hour as string,
+            rowNo as string,
+            seatNo as string,
 
-            request.query.locationName as string,
-            request.query.eventName as string
+            locationName as string,
+            eventName as string
         );
 
         // TODO: If there is a error relative to the templateId, we should make sure to
@@ -45,12 +56,11 @@ export class NfticketTransactionController {
         return this.nfticketTransactionService.createTickets(userName, collName, 1, ticket);
     }
 
+    @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })
     @Post('/validateTransaction')
-    validateTransactions(@Req() request: Request){
-        let transactionId = request.body.transactionId
-        let transactionType = request.body.transactionType
-        let transactionsBody = request.body.transactionsBody
-
+    validateTransactions(@Query('transactionId') transactionId: string,
+                            @Query('transactionType') transactionType: string,
+                            @Query('transactionsBody') transactionsBody: any[]){
         if(transactionId == '' || transactionId == null ||
             transactionType == '' || transactionType == null ||
             transactionsBody == null || transactionsBody == []){

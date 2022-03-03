@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Req, Param } from '@nestjs/common';
 import { AtomicAssetsQueryService } from './atomic-assets-query.service';
 import { Request } from 'express';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('atomic-assets')
 @Controller('atomic-assets')
 export class AtomicAssetsQueryController {
     constructor(private readonly atomicAssetsQueryService: AtomicAssetsQueryService) {}
