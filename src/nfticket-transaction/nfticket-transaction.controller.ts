@@ -2,11 +2,14 @@ import { Controller, Get, Post, Req, Query } from '@nestjs/common';
 import { NfticketTransactionService, Ticket } from './nfticket-transaction.service';
 import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Logger } from "tslog";
 
 @ApiTags('nfticket-transaction')
 @Controller('nfticket-transaction')
 export class NfticketTransactionController {
     constructor(private readonly nfticketTransactionService: NfticketTransactionService) {}
+
+    log: Logger = new Logger({ name: "NfticketTransactionControllerLogger"})
 
     @Get()
     getHello(): string {
@@ -29,26 +32,21 @@ export class NfticketTransactionController {
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @Get('/createTickets')
     getCreateTicket(@Query('userName') userName: string,
-                    @Query('name') name: string,
-                    @Query('date') date: string,
-                    @Query('hour') hour: string,
-                    @Query('rowNo') rowNo: string,
-                    @Query('seatNo') seatNo: string,
+                    @Query('eventName') eventName: string,
                     @Query('locationName') locationName: string,
-                    @Query('eventName') eventName: string){
+                    @Query('originalDateTime') originalDateTime: string,
+                    @Query('originalPrice') originalPrice: number,
+                    @Query('categoryName') categoryName: string){
         //TODO: Implement user validation
 
-        let collName = 'nftikanthynu'
-
+        let collName = 'nftikanthynx'
+        
         let ticket:Ticket = new Ticket(
-            name as string,
-            date as string,
-            hour as string,
-            rowNo as string,
-            seatNo as string,
-
+            eventName as string,
             locationName as string,
-            eventName as string
+            originalDateTime as string,
+            Number(originalPrice),
+            categoryName as string
         );
 
         // TODO: If there is a error relative to the templateId, we should make sure to
@@ -70,7 +68,7 @@ export class NfticketTransactionController {
             }
         }
         if(transactionType == 'createTicket'){
-            console.log("New transaction type createTicket has been correctly registered with following ID: " + transactionId)
+            this.log.info("New transaction type createTicket has been correctly registered with following ID: " + transactionId)
             // TODO : Save in some form the transactions of the stuff that were created.
             return {
                 success: "true",
