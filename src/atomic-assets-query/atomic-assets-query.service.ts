@@ -6,6 +6,7 @@ import { GetTableRowsResult } from 'eosjs/dist/eosjs-rpc-interfaces';
 import {  deserialize, ObjectSchema } from "atomicassets"
 import { hexToUint8Array } from 'eosjs/dist/eosjs-serialize';
 import fetch from 'node-fetch'; // node only; not needed in browsers
+import { Logger } from "tslog";
 
 import * as TICKET_SCHEMA from '../schemas/ticketSchema.json'; // this ts file should still be imported fine
 
@@ -22,6 +23,8 @@ import * as TICKET_SCHEMA from '../schemas/ticketSchema.json'; // this ts file s
 //
 @Injectable()
 export class AtomicAssetsQueryService {
+  log: Logger = new Logger({ name: "AtomicAssetsQueryServiceLogger"})
+
   rpc: JsonRpc;
   ticketSchema;
   templatesCache = [];
@@ -34,7 +37,7 @@ export class AtomicAssetsQueryService {
         //This might be replaced by a Database Item
         this.ticketSchema = ObjectSchema(TICKET_SCHEMA);
       } catch(err){
-        console.log(`Error reading file from disk: ${err}`)
+        this.log.error(`Error reading file from disk: ${err}`)
       }
   }
 
@@ -112,7 +115,7 @@ export class AtomicAssetsQueryService {
         let deserializedData = deserialize(hexToUint8Array(element.immutable_serialized_data), this.ticketSchema)
         element.immutable_serialized_data = deserializedData;
       } catch(err){
-        console.log("error while deserialising immutable data from template, not following expected schema: " + err);
+        this.log.warn("error while deserialising immutable data from template, not following expected schema: " + err);
       }
     });
     
@@ -154,14 +157,14 @@ export class AtomicAssetsQueryService {
         let deserializedData = deserialize(hexToUint8Array(element.immutable_serialized_data), this.ticketSchema)
         element.immutable_serialized_data = deserializedData;
       } catch(err){
-        console.log("error while deserialising immutable data, not following expected schema: " + err);
+        this.log.warn("error while deserialising immutable data, not following expected schema: " + err);
       }
 
       try{
         let deserializedData = deserialize(hexToUint8Array(element.mutable_serialized_data), this.ticketSchema)
         element.mutable_serialized_data = deserializedData;
       } catch(err){
-        console.log("error while deserialising mutable data, not following expected schema: " + err);
+        this.log.warn("error while deserialising mutable data, not following expected schema: " + err);
       }
     });
     return response

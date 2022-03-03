@@ -1,5 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-query.service';
+import * as TICKET_SCHEMA from '../schemas/ticketSchema.json'; // this ts file should still be imported fine
+import { Logger } from "tslog";
 
 /**
  * Backend class service to send and validate transactions
@@ -10,44 +12,34 @@ import { Injectable } from '@nestjs/common';
 
 export class Ticket {
     asset_id:string | null = null
-    name:string
-    date:string
-    hour:string
-    rowNo:string
-    seatNo:string
 
-    locationName:string
     eventName:string
+    locationName:string
+    originalDateTime:string
+    originalPrice:number
+    categoryName:string
 
-    constructor(name:string, date:string, hour:string, rowNo:string, seatNo:string, locationName:string, eventName:string){
-        this.name = name;
-        this.date = date
-        this.hour = hour
-        this.rowNo = rowNo;
-        this.seatNo = seatNo;
-        this.locationName = locationName;
+    constructor(eventName:string, locationName:string, originalDateTime:string, originalPrice:number, categoryName:string){
         this.eventName = eventName
+        this.locationName = locationName
+        this.originalDateTime = originalDateTime
+        this.originalPrice = originalPrice
+        this.categoryName = categoryName
     }
 
     getSchemaName(){
         return "ticket"
     }
 
-    returnPropertiesAsAttributeMap(): any{
-        return [
-            {"name": "name", "type": "string" },
-            {"name": "date", "type": "string"},
-            {"name": "hour", "type": "string"},
-            {"name": "locationName", "type": "string"},
-            {"name": "eventName", "type": "string"},
-            {"name": "rowNo", "type": "string"},
-            {"name": "seatNo", "type": "string"}
-        ]
+    returnTicketSchema(): any{
+        return TICKET_SCHEMA
     }
 }
 
 @Injectable()
 export class NfticketTransactionService {
+    log: Logger = new Logger({ name: "NfticketTransactionServiceLogger"})
+
     blockchainUrl: string
     appName: string
     chainId: string
@@ -79,9 +71,8 @@ export class NfticketTransactionService {
         let transactions = [];
 
         let collResults = await this.atomicAssetsService.getCollections(collName, 1)
-        console.log("Get Collections results: ");
-        console.log(collResults.rows)
         if(collResults.rows.length != 1){
+            this.log.info("Collection " + collName + " does not exist on the blockchain. Adding a trx to create it...")
             transactions.push({
                 account: this.atomicAssetContractAccountName,
                 name: 'createcol',
@@ -98,9 +89,8 @@ export class NfticketTransactionService {
         }
 
         let schemaColl = await this.atomicAssetsService.getSchemas(collName, ticket.getSchemaName(), 1)
-        console.log("Get Schemas results: ");
-        console.log(schemaColl.rows)
         if(collResults.rows.length != 1){
+            this.log.info("Schema " + ticket.getSchemaName() + " does not exist on the blockchain. Adding a trx to create it...")
             transactions.push({
                 account: this.atomicAssetContractAccountName,
                 name: 'createschema',
@@ -108,7 +98,7 @@ export class NfticketTransactionService {
                     authorized_creator: userName,
                     collection_name: collName,
                     schema_name: ticket.getSchemaName(),
-                    schema_format: ticket.returnPropertiesAsAttributeMap()
+                    schema_format: ticket.returnTicketSchema()
                 }
             })
         }
@@ -118,7 +108,7 @@ export class NfticketTransactionService {
         // We do this by counting the number of templates and adding one.
         // Little hackish for now.
         let nextTemplateId = await this.atomicAssetsService.getTemplatesCount() + 1;
-        console.log("Next Template Id Result: " + nextTemplateId);
+        this.log.info("Next Template Id Result: " + nextTemplateId);
 
         // Every time we create new assets, we will create a new template.
         // We could store the state of the templates, but for now it's easier like that.
@@ -133,8 +123,9 @@ export class NfticketTransactionService {
                     burnable: true,
                     max_supply: 0,
                     immutable_data: [
+                        {"key": "name", value: ["string", ticket.eventName]},
                         {"key": "locationName", value: ["string", ticket.locationName]},
-                        {"key": "eventName", value: ["string", ticket.eventName]}
+                        {"key": "originalDateTime", value: ["string", ticket.originalDateTime]},
                     ]
             }
         })
@@ -148,13 +139,10 @@ export class NfticketTransactionService {
                         collection_name: collName,
                         schema_name: ticket.getSchemaName(),
                         template_id: nextTemplateId,
-                        new_asset_owner: this.tempAccountOwnerAssets,
+                        new_asset_owner: userName,
                         immutable_data: [
-                            {"key": "name", "value": ["string", ticket.name]},
-                            {"key": "date", "value": ["string", ticket.date]},
-                            {"key": "hour", "value": ["string", ticket.hour]},
-                            {"key": "rowNo", "value": ["string", ticket.rowNo]},
-                            {"key": "seatNo", "value": ["string", ticket.seatNo]}
+                            {"key": "originalPrice", "value": ["string", ticket.originalPrice]},
+                            {"key": "categoryName", "value": ["string", ticket.categoryName]}
                         ],
                         mutable_data: [],
                         tokens_to_back: []

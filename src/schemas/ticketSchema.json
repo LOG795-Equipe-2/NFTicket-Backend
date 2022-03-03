@@ -1,9 +1,7 @@
 [
     { "name": "name", "type": "string" },
-    { "name": "date", "type": "string" },
-    { "name": "hour", "type": "string" },
     { "name": "locationName", "type": "string" },
-    { "name": "eventName", "type": "string" },   
-    { "name": "rowNo", "type": "string" },
-    { "name": "seatNo", "type": "string" }
+    { "name": "originalDateTime", "type": "string" },
+    { "name": "originalPrice", "type": "string" },
+    { "name": "categoryName", "type": "string" }
 ]
