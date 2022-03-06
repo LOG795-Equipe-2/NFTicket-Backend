@@ -1,6 +1,5 @@
-import { Controller, Get, Post, Req, Query } from '@nestjs/common';
+import { Controller, Get, Post, Req, Query, Body } from '@nestjs/common';
 import { NfticketTransactionService, Ticket } from './nfticket-transaction.service';
-import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Logger } from "tslog";
 
@@ -30,28 +29,22 @@ export class NfticketTransactionController {
     @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to create the tickets', 
                     description: 'It will include the transactions to create the schema and collections if they not already on the blockchain.' })
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
-    @Get('/createTickets')
-    getCreateTicket(@Query('userName') userName: string,
-                    @Query('eventName') eventName: string,
-                    @Query('locationName') locationName: string,
-                    @Query('originalDateTime') originalDateTime: string,
-                    @Query('originalPrice') originalPrice: number,
-                    @Query('categoryName') categoryName: string){
+    @Post('/createTickets')
+    getCreateTicket(@Body() ticketsReq: Ticket[],
+                    @Query('userName') userName: string){
         //TODO: Implement user validation
 
         let collName = 'nftikanthynx'
-        
-        let ticket:Ticket = new Ticket(
-            eventName as string,
-            locationName as string,
-            originalDateTime as string,
-            Number(originalPrice),
-            categoryName as string
-        );
+                    
+        let tickets:Ticket[] = []
+        ticketsReq.forEach((ticketToCreate) => {
+            let ticket:Ticket = new Ticket(ticketToCreate);
+            tickets.push(ticket)
+        })
 
         // TODO: If there is a error relative to the templateId, we should make sure to
         // retry and/or catch it specifically.
-        return this.nfticketTransactionService.createTickets(userName, collName, 1, ticket);
+        return this.nfticketTransactionService.createTickets(userName, collName, tickets);
     }
 
     @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })
