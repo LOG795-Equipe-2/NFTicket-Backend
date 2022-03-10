@@ -158,7 +158,6 @@ export class AtomicAssetsQueryService {
     rowsSaved.push(...response.rows)
 
     while(response.more){
-      console.log(response.next_key)
       response = await this.rpc.get_table_rows({
         json: true,               // Get the response as json
         code: 'atomicassets',      // Contract that we target
