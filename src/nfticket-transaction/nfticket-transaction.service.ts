@@ -18,20 +18,22 @@ export class Ticket {
     originalDateTime:string
     originalPrice:number
     categoryName:string
+    numberOfTickets:number
 
-    constructor(eventName:string, locationName:string, originalDateTime:string, originalPrice:number, categoryName:string){
-        this.eventName = eventName
-        this.locationName = locationName
-        this.originalDateTime = originalDateTime
-        this.originalPrice = originalPrice
-        this.categoryName = categoryName
+    constructor(jsonObject: any){
+        this.eventName = jsonObject.eventName
+        this.locationName = jsonObject.locationName
+        this.originalDateTime = jsonObject.originalDateTime
+        this.originalPrice = jsonObject.originalPrice
+        this.categoryName = jsonObject.categoryName
+        this.numberOfTickets = jsonObject.numberOfTickets
     }
 
-    getSchemaName(){
+    static getSchemaName(){
         return "ticket"
     }
 
-    returnTicketSchema(): any{
+    static returnTicketSchema(): any{
         return TICKET_SCHEMA
     }
 }
@@ -67,7 +69,7 @@ export class NfticketTransactionService {
         };
     }
 
-    async createTickets(userName, collName, nbToCreate:number, ticket: Ticket) {
+    async createTickets(userName, collName, tickets: Ticket[]) {
         let transactions = [];
 
         let collResults = await this.atomicAssetsService.getCollections(collName, 1)
@@ -88,67 +90,75 @@ export class NfticketTransactionService {
             })
         }
 
-        let schemaColl = await this.atomicAssetsService.getSchemas(collName, ticket.getSchemaName(), 1)
-        if(collResults.rows.length != 1){
-            this.log.info("Schema " + ticket.getSchemaName() + " does not exist on the blockchain. Adding a trx to create it...")
+        let schemaColl = await this.atomicAssetsService.getSchemas(collName, Ticket.getSchemaName(), 1)
+        if(schemaColl.rows.length != 1){
+            this.log.info("Schema " + Ticket.getSchemaName() + " does not exist on the blockchain. Adding a trx to create it...")
             transactions.push({
                 account: this.atomicAssetContractAccountName,
                 name: 'createschema',
                 data: {
                     authorized_creator: userName,
                     collection_name: collName,
-                    schema_name: ticket.getSchemaName(),
-                    schema_format: ticket.returnTicketSchema()
+                    schema_name: Ticket.getSchemaName(),
+                    schema_format: Ticket.returnTicketSchema()
                 }
             })
         }
 
-        // Because we want to create all in one transactions, we
-        // need to find manually what will be the next template id on the blockchain.
-        // We do this by counting the number of templates and adding one.
-        // Little hackish for now.
-        let nextTemplateId = await this.atomicAssetsService.getTemplatesCount() + 1;
-        this.log.info("Next Template Id Result: " + nextTemplateId);
 
         // Every time we create new assets, we will create a new template.
         // We could store the state of the templates, but for now it's easier like that.
-        transactions.push({
-            account: this.atomicAssetContractAccountName,
-            name: 'createtempl',
-            data: {
-                    authorized_creator: userName,
-                    collection_name: collName,
-                    schema_name: ticket.getSchemaName(),
-                    transferable: true,
-                    burnable: true,
-                    max_supply: 0,
-                    immutable_data: [
-                        {"key": "name", value: ["string", ticket.eventName]},
-                        {"key": "locationName", value: ["string", ticket.locationName]},
-                        {"key": "originalDateTime", value: ["string", ticket.originalDateTime]},
-                    ]
-            }
-        })
+        for(let index = 0; index < tickets.length; index++){
+            let ticket = tickets[index]
 
-        for(let i = 0; i < nbToCreate; i++){
+            let nbToCreate: number = ticket.numberOfTickets
+
             transactions.push({
                 account: this.atomicAssetContractAccountName,
-                name: 'mintasset',
+                name: 'createtempl',
                 data: {
-                        authorized_minter: userName,
+                        authorized_creator: userName,
                         collection_name: collName,
-                        schema_name: ticket.getSchemaName(),
-                        template_id: nextTemplateId,
-                        new_asset_owner: userName,
+                        schema_name: Ticket.getSchemaName(),
+                        transferable: true,
+                        burnable: true,
+                        max_supply: 0,
                         immutable_data: [
-                            {"key": "originalPrice", "value": ["string", ticket.originalPrice]},
-                            {"key": "categoryName", "value": ["string", ticket.categoryName]}
-                        ],
-                        mutable_data: [],
-                        tokens_to_back: []
+                            {"key": "name", value: ["string", ticket.eventName]},
+                            {"key": "locationName", value: ["string", ticket.locationName]},
+                            {"key": "originalDateTime", value: ["string", ticket.originalDateTime]},
+                        ]
                 }
             })
+
+            // Because we want to create all in one transactions, we
+            // need to find manually what will be the next template id on the blockchain.
+            // We do this by counting the number of templates and adding one.
+            // Little hackish for now.
+            let nextTemplateId = await this.atomicAssetsService.getTemplatesCount() + 1 + index;
+            this.log.info("Next Template Id Result for ticket " + (index+1) +" of trx: " + nextTemplateId);
+
+            for(let i = 0; i < nbToCreate; i++){
+                transactions.push({
+                    account: this.atomicAssetContractAccountName,
+                    name: 'mintasset',
+                    data: {
+                            authorized_minter: userName,
+                            collection_name: collName,
+                            schema_name: Ticket.getSchemaName(),
+                            template_id: nextTemplateId,
+                            new_asset_owner: userName,
+                            immutable_data: [
+                                {"key": "originalPrice", "value": ["string", ticket.originalPrice]},
+                                {"key": "categoryName", "value": ["string", ticket.categoryName]}
+                            ],
+                            mutable_data: [],
+                            tokens_to_back: []
+                    }
+                })
+            }
         }
+
 
         return {
             transactionId: null,
