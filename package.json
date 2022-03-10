@@ -31,6 +31,7 @@
     "cors": "^2.8.5",
     "eosjs": "^22.1.0",
     "mongoose": "^6.1.8",
+    "node-appwrite": "4.0.2",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
