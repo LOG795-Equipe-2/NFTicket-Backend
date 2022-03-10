@@ -82,7 +82,6 @@ export class NfticketTransactionService {
         let userNameLength = userName.length
         let remainingLength = targetLength - userNameLength
 
-        console.log(this.collNamePrefix.slice(0 + variation, remainingLength + variation) + userName)
         return this.collNamePrefix.slice(0 + variation, remainingLength + variation) + userName
     }
 

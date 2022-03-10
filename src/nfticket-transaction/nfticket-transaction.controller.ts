@@ -21,6 +21,16 @@ export class NfticketTransactionController {
         return this.nfticketTransactionService.initiate();
     }
 
+    @ApiOperation({ summary: 'Gives the Collection Name that has been assigned to the user.' })
+    @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
+    @Get('/getCollNameForUser')
+    getCollNameForUser(@Query('userName') userName: string){
+        return {
+            success: true,
+            data: this.nfticketTransactionService.getCollNameForUser(userName)
+        };
+    }
+
     /**
      * Will create a ticket with specified
      * 
