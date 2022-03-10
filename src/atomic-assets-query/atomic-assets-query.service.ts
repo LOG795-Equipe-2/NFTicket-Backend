@@ -56,6 +56,7 @@ export class AtomicAssetsQueryService {
       scope: 'atomicassets',      // Account that owns the data
       table: 'collections',        // Table name
       lower_bound: collName,     // Table primary key value
+      upper_bound: collName,
       limit: limit,                // Maximum number of rows that we want to get
       reverse: false,           // Optional: Get reversed data
       show_payer: false          // Optional: Show ram payer

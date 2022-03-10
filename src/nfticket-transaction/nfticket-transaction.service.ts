@@ -42,6 +42,8 @@ export class Ticket {
 export class NfticketTransactionService {
     log: Logger = new Logger({ name: "NfticketTransactionServiceLogger"})
 
+    collNamePrefix = "nfticket2895"
+
     blockchainUrl: string
     appName: string
     chainId: string
@@ -69,9 +71,27 @@ export class NfticketTransactionService {
         };
     }
 
-    async createTickets(userName, collName, tickets: Ticket[]) {
-        let transactions = [];
+    /**
+     * Allows to generate a unique name for each users, using a defined prefix and taking
+     * into account variable EOS user name.
+     * 
+     * Variation parameter can be used in the event that a coll name already exists.
+     */
+    getCollNameForUser(userName, variation = 0){
+        let targetLength = 12
+        let userNameLength = userName.length
+        let remainingLength = targetLength - userNameLength
 
+        console.log(this.collNamePrefix.slice(0 + variation, remainingLength + variation) + userName)
+        return this.collNamePrefix.slice(0 + variation, remainingLength + variation) + userName
+    }
+
+    async createTickets(userName, collName, tickets: Ticket[]) {
+        if(collName.length != 12){
+            throw new Error("Collection Name must be exactly 12 characters.")
+        }
+
+        let transactions = [];
         let collResults = await this.atomicAssetsService.getCollections(collName, 1)
         if(collResults.rows.length != 1){
             this.log.info("Collection " + collName + " does not exist on the blockchain. Adding a trx to create it...")
