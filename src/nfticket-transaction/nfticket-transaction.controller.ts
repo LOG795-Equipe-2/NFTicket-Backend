@@ -21,6 +21,16 @@ export class NfticketTransactionController {
         return this.nfticketTransactionService.initiate();
     }
 
+    @ApiOperation({ summary: 'Gives the Collection Name that has been assigned to the user.' })
+    @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
+    @Get('/getCollNameForUser')
+    getCollNameForUser(@Query('userName') userName: string){
+        return {
+            success: true,
+            data: this.nfticketTransactionService.getCollNameForUser(userName)
+        };
+    }
+
     /**
      * Will create a ticket with specified
      * 
@@ -30,11 +40,11 @@ export class NfticketTransactionController {
                     description: 'It will include the transactions to create the schema and collections if they not already on the blockchain.' })
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @Post('/createTickets')
-    getCreateTicket(@Body() ticketsReq: Ticket[],
+    async getCreateTicket(@Body() ticketsReq: Ticket[],
                     @Query('userName') userName: string){
         //TODO: Implement user validation
 
-        let collName = 'nftikanthynx'
+        let collName = this.nfticketTransactionService.getCollNameForUser(userName)
                     
         let tickets:Ticket[] = []
         ticketsReq.forEach((ticketToCreate) => {
@@ -44,7 +54,15 @@ export class NfticketTransactionController {
 
         // TODO: If there is a error relative to the templateId, we should make sure to
         // retry and/or catch it specifically.
-        return this.nfticketTransactionService.createTickets(userName, collName, tickets);
+        try{
+            let ticketTransactions = await this.nfticketTransactionService.createTickets(userName, collName, tickets)
+            return ticketTransactions;
+        } catch (err){
+            return {
+                "success": false,
+                "errorMessage" : err.message
+            }
+        }
     }
 
     @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })

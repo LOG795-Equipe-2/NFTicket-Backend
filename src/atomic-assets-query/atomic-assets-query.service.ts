@@ -56,6 +56,7 @@ export class AtomicAssetsQueryService {
       scope: 'atomicassets',      // Account that owns the data
       table: 'collections',        // Table name
       lower_bound: collName,     // Table primary key value
+      upper_bound: collName,
       limit: limit,                // Maximum number of rows that we want to get
       reverse: false,           // Optional: Get reversed data
       show_payer: false          // Optional: Show ram payer
@@ -140,16 +141,38 @@ export class AtomicAssetsQueryService {
    * If no schemaName is provided, all schemas are returned
    */
   async getAssets(user, limit = 100): Promise<GetTableRowsResult> {
-    var response = await this.rpc.get_table_rows({
+    let rowsSaved = []
+
+    let response = await this.rpc.get_table_rows({
       json: true,               // Get the response as json
       code: 'atomicassets',      // Contract that we target
       scope: user,      // Account that owns the data
       table: 'assets',        // Table name
       lower_bound: null,     // Table primary key value
+      upper_bound: null,
       limit: limit,                // Maximum number of rows that we want to get
       reverse: false,           // Optional: Get reversed data
       show_payer: false          // Optional: Show ram payer
     });
+
+    rowsSaved.push(...response.rows)
+
+    while(response.more){
+      response = await this.rpc.get_table_rows({
+        json: true,               // Get the response as json
+        code: 'atomicassets',      // Contract that we target
+        scope: user,      // Account that owns the data
+        table: 'assets',        // Table name
+        lower_bound: response.next_key,     // Table primary key value
+        upper_bound: null,
+        limit: limit,                // Maximum number of rows that we want to get
+        reverse: false,           // Optional: Get reversed data
+        show_payer: false          // Optional: Show ram payer
+      });
+      rowsSaved.push(...response.rows)
+    }
+
+    response.rows = rowsSaved
 
     //Deserialize data
     response.rows.forEach((element) => {
@@ -167,6 +190,7 @@ export class AtomicAssetsQueryService {
         this.log.warn("error while deserialising mutable data, not following expected schema: " + err);
       }
     });
+
     return response
   }
 
