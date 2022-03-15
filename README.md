@@ -18,6 +18,8 @@ BLOCKCHAIN_NODE_URL # default Value: http://eos1.anthonybrochu.com:8888
 CHAIN_ID # default Value: 5d5bbe6bb403e5ca8b087d382946807246b4dee094c7f5961e2bebd88f8c9c51
 APP_NAME # default Value: NFTicket
 TEMP_ACCOUNT_OWNER_ASSETS # Determine which account will hold the nft when they are created.
+TEMP_ACCOUNT_OWNER_PUB_KEY # Public key of the temp account
+TEMP_ACCOUNT_OWNER_PRIV_KEY # Private key of the owner of the created NFT's
 ```
 
 ## Description

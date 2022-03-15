@@ -3,6 +3,13 @@ import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-q
 import * as TICKET_SCHEMA from '../schemas/ticketSchema.json'; // this ts file should still be imported fine
 import { Logger } from "tslog";
 
+const { Api, JsonRpc, RpcError } = require('eosjs');
+import { SignatureProvider, SignatureProviderArgs } from 'eosjs/dist/eosjs-api-interfaces';
+import { PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
+import { PrivateKey } from 'eosjs/dist/eosjs-key-conversions';
+import { ec } from 'elliptic';
+const fetch = require('node-fetch');
+
 /**
  * Backend class service to send and validate transactions
  * 
@@ -38,6 +45,67 @@ export class Ticket {
     }
 }
 
+/**
+ * SignatureProvider modified for application implementation.
+ * 
+ * The reason why we don't just use JsSignatureProvider is to prevent
+ * losing the private key if there is ever a change or a hack of the lib.
+ * 
+ * However, the code is very similar.
+ * Source: https://github.com/EOSIO/eosjs/blob/master/src/eosjs-jssig.ts
+ */
+class NfticketSignatureProvider implements SignatureProvider {
+    public keys = []
+
+    /** expensive to construct; so we do it once and reuse it */
+    defaultEc = new ec('secp256k1');
+
+    /** Construct the digest from transaction details */
+    digestFromSerializedData = (
+        chainId: string,
+        serializedTransaction: Uint8Array,
+        serializedContextFreeData?: Uint8Array,
+        e = this.defaultEc): string => {
+        const signBuf = Buffer.concat([
+            Buffer.from(chainId, 'hex'),
+            Buffer.from(serializedTransaction),
+            Buffer.from(
+                serializedContextFreeData ?
+                    new Uint8Array(e.hash().update(serializedContextFreeData).digest()) :
+                    new Uint8Array(32)
+            ),
+        ]);
+        return e.hash().update(signBuf).digest();
+    };
+
+    /** Sign a transaction */
+    async sign(
+        { chainId, requiredKeys, serializedTransaction, serializedContextFreeData }: SignatureProviderArgs
+    ): Promise<PushTransactionArgs> {
+        const digest = this.digestFromSerializedData( chainId, serializedTransaction, serializedContextFreeData);
+        const signatures = [] as string[];
+        for (const key of requiredKeys) {
+            let privateKey = PrivateKey.fromString(key)
+            this.keys.push(privateKey.getPublicKey())
+            const signature = privateKey.sign(digest, false);
+            signatures.push(signature.toString());
+        }
+
+        return { signatures, serializedTransaction, serializedContextFreeData };
+    }
+
+    getAvailableKeys(): Promise<string[]> {
+        let keys = []
+        for(let key in this.keys){
+            keys.push(key.toString())
+        }
+        return new Promise((resolve, reject) => {
+            resolve(keys);
+          });
+    };
+
+}
+
 @Injectable()
 export class NfticketTransactionService {
     log: Logger = new Logger({ name: "NfticketTransactionServiceLogger"})
@@ -50,6 +118,7 @@ export class NfticketTransactionService {
 
     atomicAssetContractAccountName: string
     tempAccountOwnerAssets: string
+    tempAccountOwnerPrivKey: string
 
     constructor(private configService: ConfigService, private atomicAssetsService: AtomicAssetsQueryService){
         this.blockchainUrl = configService.get<string>('blockchainNodeUrl')
@@ -57,6 +126,7 @@ export class NfticketTransactionService {
         this.chainId = configService.get<string>('chainId')
         this.atomicAssetContractAccountName = configService.get<string>('atomicAssetContractAccountName')
         this.tempAccountOwnerAssets = configService.get<string>('tempAccountOwnerAssets')
+        this.tempAccountOwnerPrivKey = configService.get<string>('tempAccountOwnerPrivKey')
     }
 
     getHello(): string {
@@ -69,6 +139,49 @@ export class NfticketTransactionService {
             appName: this.appName,
             chainId: this.chainId
         };
+    }
+
+    /**
+     * Execute transactions as the user that is owned by the backend.
+     * Is private for protection, not allowing anyone to submit transactions.
+     */
+    private async executeTransactionAsNfticket(actions: any) {
+        const rpc = new JsonRpc(this.blockchainUrl, { fetch });
+        const api = new Api({ rpc })
+
+        // Complement Actions
+        actions.forEach((element) => {
+            element.authorization = [{actor: this.tempAccountOwnerAssets, permission: 'active'}]
+        })
+
+        try{
+            // Make the unsigned Transaction
+            let unsignedTransactions = await api.transact({ actions: actions }, { 
+                broadcast:false,
+                sign:false,
+                blocksBehind: 3,
+                expireSeconds: 30,
+            })
+    
+            // Sign the transaction
+            // This part could be done elsewhere (Secure enclave) for security.
+            let signatureProvider = new NfticketSignatureProvider()
+            let signedTransactions = await signatureProvider.sign({ 
+                chainId: this.chainId, 
+                requiredKeys: [ this.tempAccountOwnerPrivKey ], 
+                serializedTransaction: unsignedTransactions.serializedTransaction, 
+                serializedContextFreeData: unsignedTransactions.serializedContextFreeData, 
+                abis:null 
+            })
+            
+            // Push the signed transaction on the blockchain
+            let data = await rpc.push_transaction(signedTransactions)
+    
+            return data.transaction_id
+        } catch(e){
+            this.log.error("Error happened during transaction on blockchain: " + e)
+            throw e
+        }
     }
 
     /**
