@@ -90,7 +90,7 @@ export class AtomicAssetsQueryService {
    * 
    * Uses cache logic to prevent spamming blockchain server.
    */
-   async getTemplates(collName, templateId = null, limit = 100) {
+   async getTemplates(collName, templateId = null, limit = 100, reverse = false) {
      let response;
     if(this.templatesCache[templateId]){
       response = JSON.parse(JSON.stringify(this.templatesCache[templateId]))
@@ -102,7 +102,7 @@ export class AtomicAssetsQueryService {
         table: 'templates',        // Table name
         lower_bound: templateId,     // Table primary key value
         limit: limit,                // Maximum number of rows that we want to get
-        reverse: false,           // Optional: Get reversed data
+        reverse: reverse,           // Optional: Get reversed data
         show_payer: false          // Optional: Show ram payer
       });
       if(templateId){

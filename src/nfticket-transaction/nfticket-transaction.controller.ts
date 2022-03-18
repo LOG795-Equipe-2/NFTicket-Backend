@@ -55,7 +55,7 @@ export class NfticketTransactionController {
         // TODO: If there is a error relative to the templateId, we should make sure to
         // retry and/or catch it specifically.
         try{
-            let ticketTransactions = await this.nfticketTransactionService.createTickets(userName, collName, tickets)
+            let ticketTransactions = await this.nfticketTransactionService.createTicketCategoryTemplate(userName, collName, tickets)
             return ticketTransactions;
         } catch (err){
             return {
@@ -67,23 +67,25 @@ export class NfticketTransactionController {
 
     @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })
     @Post('/validateTransaction')
-    validateTransactions(@Query('transactionId') transactionId: string,
-                            @Query('transactionType') transactionType: string,
-                            @Query('transactionsBody') transactionsBody: any[]){
-        if(transactionId == '' || transactionId == null ||
-            transactionType == '' || transactionType == null ||
-            transactionsBody == null || transactionsBody == []){
+    async postValidateTransactions(@Body() transactionValidation: any){
+        if(transactionValidation.transactionId == '' || transactionValidation.transactionId == null ||
+            transactionValidation.transactionType == '' || transactionValidation.transactionType == null ||
+            transactionValidation.transactionsBody == null || transactionValidation.transactionsBody == [] ||
+            transactionValidation.userName == '' || transactionValidation.userName == null){
             return {
                 success: "false",
                 message: "Error while validating the transactions. Transaction is invalid."
             }
         }
-        if(transactionType == 'createTicket'){
-            this.log.info("New transaction type createTicket has been correctly registered with following ID: " + transactionId)
-            // TODO : Save in some form the transactions of the stuff that were created.
+
+        let collName = this.nfticketTransactionService.getCollNameForUser(transactionValidation.userName)
+        if(transactionValidation.transactionType == 'createTicket'){
+            this.log.info("New transaction type createTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
+            let templateInformations = await this.nfticketTransactionService.validateCreateTicketTemplate(collName, transactionValidation.transactionsBody)
             return {
                 success: "true",
-                message: "Transaction with ID " + transactionId + " has been successfully validated."
+                message: "Transaction with ID " + transactionValidation.transactionId + " has been successfully validated.",
+                templates: templateInformations
             }
         } else {
             return {
@@ -92,6 +94,4 @@ export class NfticketTransactionController {
             }
         }
     }
-
-
 }

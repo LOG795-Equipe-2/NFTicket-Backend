@@ -4,6 +4,7 @@ import configuration from '../config/configuration';
 import { NfticketTransactionController } from './nfticket-transaction.controller'
 import { NfticketTransactionService } from './nfticket-transaction.service';
 import { AtomicAssetsQueryModule } from '../atomic-assets-query/atomic-assets-query.module';
+import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-query.service';
 
 @Module({  
     imports: [
@@ -14,7 +15,7 @@ import { AtomicAssetsQueryModule } from '../atomic-assets-query/atomic-assets-qu
     AtomicAssetsQueryModule
   ],
   controllers: [NfticketTransactionController],
-  providers: [NfticketTransactionService]
+  providers: [NfticketTransactionService, AtomicAssetsQueryService]
   
 })
 export class NfticketTransactionModule {}
