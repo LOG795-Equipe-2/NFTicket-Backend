@@ -30,6 +30,7 @@
     "atomicassets": "^1.4.2",
     "cors": "^2.8.5",
     "eosjs": "^22.1.0",
+    "lodash": "^4.17.21",
     "mongoose": "^6.1.8",
     "node-appwrite": "4.0.2",
     "reflect-metadata": "^0.1.13",

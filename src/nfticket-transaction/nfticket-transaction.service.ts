@@ -9,6 +9,7 @@ import { PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { PrivateKey } from 'eosjs/dist/eosjs-key-conversions';
 import { ec } from 'elliptic';
 const fetch = require('node-fetch');
+var _ = require('lodash');
 
 /**
  * Backend class service to send and validate transactions
@@ -198,7 +199,20 @@ export class NfticketTransactionService {
         return this.collNamePrefix.slice(0 + variation, remainingLength + variation) + userName
     }
 
-    async createTickets(userName, collName, tickets: Ticket[]) {
+    convertAtomicAssetsArrayToJsonArray(originalArray: any[]){
+        let newArray = []
+        for(let trx of originalArray){
+            let newObject = {}
+            for(let obj of trx){
+                newObject[obj.key] = obj.value[1]
+            }
+            newArray.push(newObject);
+        }
+
+        return newArray;
+    }
+
+    async createTicketCategoryTemplate(userName, collName, tickets: Ticket[]) {
         if(collName.length != 12){
             throw new Error("Collection Name must be exactly 12 characters.")
         }
@@ -237,13 +251,10 @@ export class NfticketTransactionService {
             })
         }
 
-
         // Every time we create new assets, we will create a new template.
         // We could store the state of the templates, but for now it's easier like that.
         for(let index = 0; index < tickets.length; index++){
             let ticket = tickets[index]
-
-            let nbToCreate: number = ticket.numberOfTickets
 
             transactions.push({
                 account: this.atomicAssetContractAccountName,
@@ -259,44 +270,43 @@ export class NfticketTransactionService {
                             {"key": "name", value: ["string", ticket.eventName]},
                             {"key": "locationName", value: ["string", ticket.locationName]},
                             {"key": "originalDateTime", value: ["string", ticket.originalDateTime]},
+                            {"key": "originalPrice", "value": ["string", ticket.originalPrice]},
+                            {"key": "categoryName", "value": ["string", ticket.categoryName]}
                         ]
                 }
             })
-
-            // Because we want to create all in one transactions, we
-            // need to find manually what will be the next template id on the blockchain.
-            // We do this by counting the number of templates and adding one.
-            // Little hackish for now.
-            let nextTemplateId = await this.atomicAssetsService.getTemplatesCount() + 1 + index;
-            this.log.info("Next Template Id Result for ticket " + (index+1) +" of trx: " + nextTemplateId);
-
-            for(let i = 0; i < nbToCreate; i++){
-                transactions.push({
-                    account: this.atomicAssetContractAccountName,
-                    name: 'mintasset',
-                    data: {
-                            authorized_minter: userName,
-                            collection_name: collName,
-                            schema_name: Ticket.getSchemaName(),
-                            template_id: nextTemplateId,
-                            new_asset_owner: userName,
-                            immutable_data: [
-                                {"key": "originalPrice", "value": ["string", ticket.originalPrice]},
-                                {"key": "categoryName", "value": ["string", ticket.categoryName]}
-                            ],
-                            mutable_data: [],
-                            tokens_to_back: []
-                    }
-                })
-            }
         }
-
 
         return {
             transactionId: null,
             transactionType: 'createTicket',
-            transactionsBody: transactions
+            transactionsBody: transactions,
+            userName: userName
         };
+    }
+
+    async validateCreateTicketTemplate(collName: string, transactionsBody: any[]): Promise<any[]>{
+        let createTemplTransactionsDone = transactionsBody.filter((element) => element.name == 'createtempl')
+                                        .map((element) => element.data.immutable_data);
+        let createTemplTransactionsDoneObj = this.convertAtomicAssetsArrayToJsonArray(createTemplTransactionsDone)
+
+        // Take 3 more templates as a precaution. Even if you own the collection.
+        let allTemplates = await this.atomicAssetsService.getTemplates(collName, null, createTemplTransactionsDone.length + 3, true)
+        let templatesWithId = []
+
+        for(let rowData of allTemplates.rows){
+            let template = createTemplTransactionsDoneObj.find((element) => {
+                if(element.originalPrice)
+                    element.originalPrice = element.originalPrice.toString()
+                return _.isEqual(element, rowData.immutable_serialized_data)
+            })
+            if(typeof(template) !== "undefined"){
+                template['template_id'] = rowData.template_id
+                templatesWithId.push(template)
+            }
+        }
+
+        return templatesWithId;
     }
 
 }
