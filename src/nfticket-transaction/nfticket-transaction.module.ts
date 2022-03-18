@@ -4,7 +4,7 @@ import configuration from '../config/configuration';
 import { NfticketTransactionController } from './nfticket-transaction.controller'
 import { NfticketTransactionService } from './nfticket-transaction.service';
 import { AtomicAssetsQueryModule } from '../atomic-assets-query/atomic-assets-query.module';
-import { AtomicAssetsQueryService } from 'src/atomic-assets-query/atomic-assets-query.service';
+import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-query.service';
 
 @Module({  
     imports: [
