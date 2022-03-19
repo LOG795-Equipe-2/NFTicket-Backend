@@ -285,6 +285,10 @@ export class NfticketTransactionService {
         };
     }
 
+    async mintTicketForEvent(ticketCategoryId: string){
+        console.log("In mintTicketForEvent: In progress");
+    }
+
     async validateCreateTicketTemplate(collName: string, transactionsBody: any[]): Promise<any[]>{
         let createTemplTransactionsDone = transactionsBody.filter((element) => element.name == 'createtempl')
                                         .map((element) => element.data.immutable_data);
@@ -296,7 +300,8 @@ export class NfticketTransactionService {
 
         for(let rowData of allTemplates.rows){
             let template = createTemplTransactionsDoneObj.find((element) => {
-                if(element.originalPrice)
+                // We need to check if == 0, cause it is the case of a category ticket being free
+                if(element.originalPrice || element.originalPrice === 0)
                     element.originalPrice = element.originalPrice.toString()
                 return _.isEqual(element, rowData.immutable_serialized_data)
             })
