@@ -17,7 +17,7 @@ var _ = require('lodash');
  */
 
 import { Injectable } from '@nestjs/common';
-import { AppwriteService } from 'src/appwrite/appwrite.service';
+import { AppwriteService } from '../appwrite/appwrite.service';
 
 export class Ticket {
     asset_id:string | null = null
