@@ -20,6 +20,8 @@ APP_NAME # default Value: NFTicket
 TEMP_ACCOUNT_OWNER_ASSETS # Determine which account will hold the nft when they are created.
 TEMP_ACCOUNT_OWNER_PUB_KEY # Public key of the temp account
 TEMP_ACCOUNT_OWNER_PRIV_KEY # Private key of the owner of the created NFT's
+APPWRITE_PROJECTID # Project Id of the appwrite project
+APPWRITE_ENDPOINT # Endpoint of the appwrite instance
 ```
 
 ## Description

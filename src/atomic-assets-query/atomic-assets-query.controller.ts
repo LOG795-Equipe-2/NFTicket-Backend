@@ -18,6 +18,11 @@ export class AtomicAssetsQueryController {
         return this.atomicAssetsQueryService.getAssets(params.userName)
     }
 
+    @Get('/collections/:collName')
+    getCollection(@Param() params){
+        return this.atomicAssetsQueryService.getCollections(params.collName)
+    }
+
     @Get('/templates/:coll_name/:template_id')
     getTemplate(@Param() params){
         return this.atomicAssetsQueryService.getTemplates(params.coll_name, params.template_id, 1)

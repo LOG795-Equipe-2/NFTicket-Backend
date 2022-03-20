@@ -32,11 +32,11 @@ export class NfticketTransactionController {
     }
 
     /**
-     * Will create a ticket with specified
+     * Will create a ticket template with specified data.
      * 
      * 
      */
-    @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to create the tickets', 
+    @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to create the templates for ticket catgories', 
                     description: 'It will include the transactions to create the schema and collections if they not already on the blockchain.' })
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @Post('/createTickets')
@@ -65,6 +65,30 @@ export class NfticketTransactionController {
         }
     }
 
+    /**
+     * Will create a ticket with specified
+     * 
+     * 
+     */
+    @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to buy a ticket.'})
+    @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
+    @ApiQuery({ name: 'ticketCategoryId', description: 'The ID of the category to buy a ticket from.'})
+    @Get('/buyTicketFromCategory')
+    async getBuyTicket(@Query('ticketCategoryId') ticketCategoryId: string,
+            @Query('userName') userName: string){
+        let transactions = []
+
+        //TODO: Create transactions to create transfer EOS tokens.
+
+        return {
+            transactionId: null,
+            transactionType: 'createTicket',
+            transactionsBody: transactions,
+            userName: userName,
+            ticketCategoryId: ticketCategoryId
+        };    
+    }
+
     @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })
     @Post('/validateTransaction')
     async postValidateTransactions(@Body() transactionValidation: any){
@@ -86,6 +110,20 @@ export class NfticketTransactionController {
                 success: "true",
                 message: "Transaction with ID " + transactionValidation.transactionId + " has been successfully validated.",
                 templates: templateInformations
+            }
+        } else if(transactionValidation.transactionType == 'buyTicket'){
+            this.log.info("New transaction type buyTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
+            if(transactionValidation.ticketCategoryId == '' || transactionValidation.ticketCategoryId == null){
+                return {
+                    success: "false",
+                    message: "Error while validating the transactions. Transaction is invalid."
+                }
+            }
+            //TODO: Add a validation that will allow to confirm the payment (either EOS or cash) has been done before transfering the tickets.
+            let ticketChoosen = await this.nfticketTransactionService.validateTicketBuy(transactionValidation.ticketCategoryId, transactionValidation.userName);
+            return {
+                success: "true",
+                message: "Transfer for ticket " + ticketChoosen.$id + " with asset ID: " + ticketChoosen.assetId + " has been successfully executed."
             }
         } else {
             return {

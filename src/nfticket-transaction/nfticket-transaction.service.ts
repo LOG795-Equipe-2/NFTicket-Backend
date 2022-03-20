@@ -17,6 +17,7 @@ var _ = require('lodash');
  */
 
 import { Injectable } from '@nestjs/common';
+import { AppwriteService } from 'src/appwrite/appwrite.service';
 
 export class Ticket {
     asset_id:string | null = null
@@ -121,7 +122,8 @@ export class NfticketTransactionService {
     tempAccountOwnerAssets: string
     tempAccountOwnerPrivKey: string
 
-    constructor(private configService: ConfigService, private atomicAssetsService: AtomicAssetsQueryService){
+    constructor(private configService: ConfigService, private atomicAssetsService: AtomicAssetsQueryService, 
+            private appwriteService: AppwriteService){
         this.blockchainUrl = configService.get<string>('blockchainNodeUrl')
         this.appName = configService.get<string>('appName')
         this.chainId = configService.get<string>('chainId')
@@ -177,7 +179,6 @@ export class NfticketTransactionService {
             
             // Push the signed transaction on the blockchain
             let data = await rpc.push_transaction(signedTransactions)
-    
             return data.transaction_id
         } catch(e){
             this.log.error("Error happened during transaction on blockchain: " + e)
@@ -228,7 +229,9 @@ export class NfticketTransactionService {
                     author: userName,
                     collection_name: collName,
                     allow_notify: true,
-                    authorized_accounts: [userName],
+                    authorized_accounts: [
+                        userName, this.tempAccountOwnerAssets
+                    ],
                     notify_accounts: [],
                     market_fee: 0,
                     data: []
@@ -277,6 +280,18 @@ export class NfticketTransactionService {
             })
         }
 
+        // Put to true to allow NFTICKET account to make transaction on your coll, if already created.
+        if(false){
+            transactions.push({
+                account: 'atomicassets',
+                name: 'addcolauth',
+                data: { 
+                    collection_name: collName,
+                    account_to_add: this.tempAccountOwnerAssets
+                }
+            });
+        }
+
         return {
             transactionId: null,
             transactionType: 'createTicket',
@@ -285,8 +300,78 @@ export class NfticketTransactionService {
         };
     }
 
-    async mintTicketForEvent(ticketCategoryId: string){
-        console.log("In mintTicketForEvent: In progress");
+    async getRemainingTickets(ticketCategoryId: string) {
+        let ticketsNotSold = await this.appwriteService.getTicketsNotSold(ticketCategoryId)
+        return ticketsNotSold;        
+    }
+
+    chooseTicketAndReserve(tickets){
+        //TODO: reserve the tickets in the DB to prevent it being stolen while transactionning.
+        return tickets[0]
+    }
+
+    async mintTicketForEvent(ticket){
+        let ticketCategory = await this.appwriteService.getTicketCategory(ticket.categoryId)
+
+        //TODO: set collName
+        let collName = "nfticanthony";
+
+        let transactionObject = {
+            account: this.atomicAssetContractAccountName,
+            name: 'mintasset',
+            data: {
+                    authorized_minter: this.tempAccountOwnerAssets,
+                    collection_name: collName,
+                    schema_name: Ticket.getSchemaName(),
+                    template_id: ticketCategory['atomicTemplateId'],
+                    new_asset_owner: this.tempAccountOwnerAssets,
+                    immutable_data: [],
+                    mutable_data: [],
+                    tokens_to_back: []
+            }
+        }
+
+        try{
+            await this.executeTransactionAsNfticket([transactionObject]);
+
+            // Get asset ID of the ticket we just created.
+            let allAssets = await this.atomicAssetsService.getAssets(this.tempAccountOwnerAssets, 1, true)
+
+            // TODO: Add validation to see if the queried asset is effectively the good one.
+            if(allAssets.rows.length != 1){
+                throw new Error("No assets found");
+            }
+
+            return allAssets.rows[0].asset_id;   
+        } catch(err){
+            console.log("Error happenned during minting of the assets: " + err)
+            throw err;
+        }
+    }
+
+    async transfertAssetToUser(assetId, userName){
+        let transactionObject = {
+            account: this.atomicAssetContractAccountName,
+            name: 'transfer',
+            data: {
+                    from: this.tempAccountOwnerAssets,
+                    to: userName,
+                    asset_ids: [ assetId ],
+                    memo: 'Buy of this ticket executed via NFTicket platform'
+            }
+        }
+
+        try{
+            await this.executeTransactionAsNfticket([transactionObject]);
+
+        } catch(err){
+            console.log("Error happenned during transfer of the assets to the user: " + err)
+            throw err;
+        }
+    }
+
+    async updateTicket(ticketId, modifiedData){
+        this.appwriteService.updateTicket(ticketId, modifiedData)
     }
 
     async validateCreateTicketTemplate(collName: string, transactionsBody: any[]): Promise<any[]>{
@@ -312,6 +397,39 @@ export class NfticketTransactionService {
         }
 
         return templatesWithId;
+    }
+
+    async validateTicketBuy(ticketCategoryId, userName){
+        // Check if remaining tickets
+        let remainingTickets = await this.getRemainingTickets(ticketCategoryId);
+        if(remainingTickets.length == 0){
+            return {
+                "success": false,
+                "data" : "No tickets remaining for this category"
+            }
+        }
+
+        // Choose one of the tickets
+        let ticketChoosen = await this.chooseTicketAndReserve(remainingTickets)
+
+        // Set as sold, since we already confirmed the payment here
+        await this.updateTicket(ticketChoosen.$id, {
+            isSold: true
+        });
+
+        // Mint the ticket if necessary
+        if(ticketChoosen.assetId == null){
+            ticketChoosen.assetId = await this.mintTicketForEvent(ticketChoosen)
+
+            await this.updateTicket(ticketChoosen.$id, {
+                assetId: ticketChoosen.assetId
+            });
+        }
+
+        // Create the transfer to the buyer
+        await this.transfertAssetToUser(ticketChoosen.assetId, userName);
+        
+        return ticketChoosen
     }
 
 }
