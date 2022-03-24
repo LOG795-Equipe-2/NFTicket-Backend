@@ -113,13 +113,22 @@ export class AtomicAssetsQueryService {
     //Deserialize data
     response.rows.forEach((element) => {
       try{
-        let deserializedData = deserialize(hexToUint8Array(element.immutable_serialized_data), this.ticketSchema)
+        /**
+         * It seems that a different node returns object directly as Uint8array, 
+         * so depending on the response, we will manage the deserialization differently.
+         */
+        let deserializedData;
+        if(typeof(element.immutable_serialized_data) == 'string'){
+          deserializedData = deserialize(hexToUint8Array(element.immutable_serialized_data), this.ticketSchema)
+        } else {
+          deserializedData = deserialize(element.immutable_serialized_data, this.ticketSchema)
+        }
         element.immutable_serialized_data = deserializedData;
       } catch(err){
         this.log.warn("error while deserialising immutable data from template, not following expected schema: " + err);
       }
     });
-    
+
     return response
   }
 
