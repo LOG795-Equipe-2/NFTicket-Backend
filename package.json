@@ -27,6 +27,7 @@
     "@nestjs/mongoose": "^9.0.2",
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/swagger": "^5.2.0",
+    "appwrite": "^7.0.0",
     "atomicassets": "^1.4.2",
     "cors": "^2.8.5",
     "eosjs": "^22.1.0",

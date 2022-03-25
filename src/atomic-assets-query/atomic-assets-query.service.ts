@@ -41,10 +41,6 @@ export class AtomicAssetsQueryService {
       }
   }
 
-  getHello(): string {
-    return 'Hello World!';
-  }
-
   /**
    * Returns a collection from atomicAssets based on a collName Provided
    * If no collName provided, all rows are returned.
@@ -113,34 +109,20 @@ export class AtomicAssetsQueryService {
     //Deserialize data
     response.rows.forEach((element) => {
       try{
-        let deserializedData = deserialize(hexToUint8Array(element.immutable_serialized_data), this.ticketSchema)
-        element.immutable_serialized_data = deserializedData;
+        element.immutable_serialized_data = this.deserializeData(element.immutable_serialized_data, this.ticketSchema);
       } catch(err){
         this.log.warn("error while deserialising immutable data from template, not following expected schema: " + err);
       }
     });
-    
+
     return response
-  }
-
-  async getTemplatesCount(code = 'atomicassets', table = 'templates'){
-    let sumOfTemplates = 0;
-    let values = (await this.rpc.get_table_by_scope({
-      code: code,
-      table: table
-    }))
-    values.rows.forEach(element => {
-        sumOfTemplates += element.count
-    });
-
-    return sumOfTemplates
   }
 
   /**
    * Return all the templates for a specific collection
    * If no schemaName is provided, all schemas are returned
    */
-  async getAssets(user, limit = 100): Promise<GetTableRowsResult> {
+  async getAssets(user, limit = 100, reverse = false): Promise<GetTableRowsResult> {
     let rowsSaved = []
 
     let response = await this.rpc.get_table_rows({
@@ -151,13 +133,13 @@ export class AtomicAssetsQueryService {
       lower_bound: null,     // Table primary key value
       upper_bound: null,
       limit: limit,                // Maximum number of rows that we want to get
-      reverse: false,           // Optional: Get reversed data
+      reverse: reverse,           // Optional: Get reversed data
       show_payer: false          // Optional: Show ram payer
     });
 
     rowsSaved.push(...response.rows)
 
-    while(response.more){
+    while(response.more && rowsSaved.length < limit){
       response = await this.rpc.get_table_rows({
         json: true,               // Get the response as json
         code: 'atomicassets',      // Contract that we target
@@ -166,7 +148,7 @@ export class AtomicAssetsQueryService {
         lower_bound: response.next_key,     // Table primary key value
         upper_bound: null,
         limit: limit,                // Maximum number of rows that we want to get
-        reverse: false,           // Optional: Get reversed data
+        reverse: reverse,           // Optional: Get reversed data
         show_payer: false          // Optional: Show ram payer
       });
       rowsSaved.push(...response.rows)
@@ -177,21 +159,41 @@ export class AtomicAssetsQueryService {
     //Deserialize data
     response.rows.forEach((element) => {
       try{
-        let deserializedData = deserialize(hexToUint8Array(element.immutable_serialized_data), this.ticketSchema)
-        element.immutable_serialized_data = deserializedData;
+        element.immutable_serialized_data = this.deserializeData(element.immutable_serialized_data, this.ticketSchema);
       } catch(err){
         this.log.warn("error while deserialising immutable data, not following expected schema: " + err);
       }
 
       try{
-        let deserializedData = deserialize(hexToUint8Array(element.mutable_serialized_data), this.ticketSchema)
-        element.mutable_serialized_data = deserializedData;
+        element.mutable_serialized_data = this.deserializeData(element.mutable_serialized_data, this.ticketSchema);
       } catch(err){
         this.log.warn("error while deserialising mutable data, not following expected schema: " + err);
       }
     });
 
     return response
+  }
+
+  /**
+   * Deserialize a particular set of data that is coming from the EOS blockchain.
+   * 
+   * Depending of if the data is a hex string or a Uint8Array, it will convert it to an object.
+   * @param data 
+   * @param schema 
+   * @returns 
+   */
+  deserializeData(data, schema){
+    let deserializedData
+    /**
+     * It seems that a different node returns object directly as Uint8array, 
+     * so depending on the response, we will manage the deserialization differently.
+     */
+    if(typeof(data) == 'string'){
+      deserializedData = deserialize(hexToUint8Array(data), schema)
+    } else {
+      deserializedData = deserialize(data, schema)
+    }
+    return deserializedData
   }
 
 }

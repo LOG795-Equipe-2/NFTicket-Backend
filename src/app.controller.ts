@@ -10,9 +10,4 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
-
-  @Get('/EOSTest')
-  async getTestEOSJs(): Promise<string> {
-    return await this.appService.getTestEOSJs();
-  }
 }
