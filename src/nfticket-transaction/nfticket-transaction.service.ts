@@ -121,6 +121,9 @@ export class NfticketTransactionService {
     atomicAssetContractAccountName: string
     tempAccountOwnerAssets: string
     tempAccountOwnerPrivKey: string
+    transferContractName: string
+    systemTokenBlockchain: string
+    systemTokenFixedPrecision: number
 
     constructor(private configService: ConfigService, private atomicAssetsService: AtomicAssetsQueryService, 
             private appwriteService: AppwriteService){
@@ -130,17 +133,18 @@ export class NfticketTransactionService {
         this.atomicAssetContractAccountName = configService.get<string>('atomicAssetContractAccountName')
         this.tempAccountOwnerAssets = configService.get<string>('tempAccountOwnerAssets')
         this.tempAccountOwnerPrivKey = configService.get<string>('tempAccountOwnerPrivKey')
-    }
-
-    getHello(): string {
-        return 'Hello World!';
+        this.systemTokenBlockchain = configService.get<string>('blockchainTokenSymbol')
+        this.systemTokenFixedPrecision = configService.get<number>('blockchainTokenFixedPrecision')
+        this.transferContractName = configService.get<string>('blockchainTransferContractName')
     }
 
     initiate(): any{
         return {
             blockchainUrl: this.blockchainUrl,
             appName: this.appName,
-            chainId: this.chainId
+            chainId: this.chainId,
+            systemTokenBlockchain: this.systemTokenBlockchain,
+            systemTokenFixedPrecision: this.systemTokenFixedPrecision
         };
     }
 
@@ -292,16 +296,16 @@ export class NfticketTransactionService {
             });
         }
 
-        return {
-            transactionId: null,
-            transactionType: 'createTicket',
-            transactionsBody: transactions,
-            userName: userName
-        };
+        return transactions
     }
 
     async getRemainingTickets(ticketCategoryId: string) {
         let ticketsNotSold = await this.appwriteService.getTicketsNotSold(ticketCategoryId)
+        return ticketsNotSold;        
+    }
+
+    async getCollNameForEvent(ticketCategoryId: string) {
+        let ticketsNotSold = await this.appwriteService.getCollNameForEvent(ticketCategoryId)
         return ticketsNotSold;        
     }
 
@@ -310,11 +314,37 @@ export class NfticketTransactionService {
         return tickets[0]
     }
 
-    async mintTicketForEvent(ticket){
-        let ticketCategory = await this.appwriteService.getTicketCategory(ticket.categoryId)
+    async checkIfTicketRemaining(ticketCategoryId: string){
+        // Check if remaining tickets
+        let remainingTickets = await this.getRemainingTickets(ticketCategoryId);
+        return remainingTickets.length > 0
+    }
 
-        //TODO: set collName
-        let collName = "nfticanthony";
+    async createBuyTransaction(userName: string, ticketCategoryId: string){
+        let ticketCategory = await this.appwriteService.getTicketCategory(ticketCategoryId)
+        let ticketPrice = parseFloat(ticketCategory['price']);
+        let eventId = ticketCategory['eventId']
+
+        let transactions = [];
+        if(ticketPrice > 0){
+            transactions.push({
+                account: this.transferContractName,
+                name: 'transfer',
+                data: {
+                    from: userName,
+                    to: this.tempAccountOwnerAssets,
+                    quantity: ticketPrice.toFixed(this.systemTokenFixedPrecision) + ' ' + this.systemTokenBlockchain,
+                    memo: 'Buying a ticket for an event with ID: ' + eventId + ' on NFTicket platform.'
+                  }
+            })
+        }
+
+        return transactions
+
+    }
+
+    async mintTicketForEvent(ticket, collName){
+        let ticketCategory = await this.appwriteService.getTicketCategory(ticket.categoryId)
 
         let transactionObject = {
             account: this.atomicAssetContractAccountName,
@@ -344,7 +374,7 @@ export class NfticketTransactionService {
 
             return allAssets.rows[0].asset_id;   
         } catch(err){
-            console.log("Error happenned during minting of the assets: " + err)
+            this.log.error("Error happenned during minting of the assets: " + err)
             throw err;
         }
     }
@@ -365,7 +395,7 @@ export class NfticketTransactionService {
             await this.executeTransactionAsNfticket([transactionObject]);
 
         } catch(err){
-            console.log("Error happenned during transfer of the assets to the user: " + err)
+            this.log.error("Error happenned during transfer of the assets to the user: " + err)
             throw err;
         }
     }
@@ -409,6 +439,14 @@ export class NfticketTransactionService {
             }
         }
 
+        let collNameEvent = await this.getCollNameForEvent(ticketCategoryId)   
+        if(collNameEvent == null || collNameEvent == ''){
+            return {
+                "success": false,
+                "data" : "Collection Name is invalid. Event is probably invalid"
+            }
+        }
+
         // Choose one of the tickets
         let ticketChoosen = await this.chooseTicketAndReserve(remainingTickets)
 
@@ -419,7 +457,7 @@ export class NfticketTransactionService {
 
         // Mint the ticket if necessary
         if(ticketChoosen.assetId == null){
-            ticketChoosen.assetId = await this.mintTicketForEvent(ticketChoosen)
+            ticketChoosen.assetId = await this.mintTicketForEvent(ticketChoosen, collNameEvent)
 
             await this.updateTicket(ticketChoosen.$id, {
                 assetId: ticketChoosen.assetId

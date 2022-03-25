@@ -91,6 +91,21 @@ export class AppwriteService {
         }
     }
 
+    async getCollNameForEvent(ticketCategoryId: string){
+        try{
+            let ticketCategory = await this.getTicketCategory(ticketCategoryId);
+            let eventId = ticketCategory['eventId'];
+            if(eventId == null){
+                return null;
+            }
+            let response = await this.database.getDocument('62210e0672c9be723f8b', eventId);
+            return response['atomicCollName']
+        } catch(err){
+            console.log("error: " + err);
+            throw err;
+        }
+    }
+
     async getTicketCategory(ticketCategoryId: string){
         try{
             let response = await this.database.getDocument('622111bde1ca95a94544', ticketCategoryId);

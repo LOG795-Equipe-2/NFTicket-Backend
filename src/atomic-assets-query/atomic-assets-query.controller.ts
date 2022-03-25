@@ -2,29 +2,37 @@ import { Controller, Get, Post, Req, Param } from '@nestjs/common';
 import { AtomicAssetsQueryService } from './atomic-assets-query.service';
 import { Request } from 'express';
 import { ApiTags } from '@nestjs/swagger';
+import ApiResponse from '../utilities/ApiResponse'
 
 @ApiTags('atomic-assets')
 @Controller('atomic-assets')
 export class AtomicAssetsQueryController {
     constructor(private readonly atomicAssetsQueryService: AtomicAssetsQueryService) {}
 
-    @Get()
-    getHello(): string {
-        return this.atomicAssetsQueryService.getHello();
-    }  
-
     @Get('/assets/:userName')
-    getAssets(@Param() params){
-        return this.atomicAssetsQueryService.getAssets(params.userName)
+    async getAssets(@Param() params): Promise<ApiResponse> {
+        let assets = await this.atomicAssetsQueryService.getAssets(params.userName);
+        return {
+            success: true,
+            data: assets
+        }
     }
 
     @Get('/collections/:collName')
-    getCollection(@Param() params){
-        return this.atomicAssetsQueryService.getCollections(params.collName)
+    async getCollection(@Param() params): Promise<ApiResponse> {
+        let collections = await this.atomicAssetsQueryService.getCollections(params.collName);
+        return {
+            success: true,
+            data: collections
+        } 
     }
 
     @Get('/templates/:coll_name/:template_id')
-    getTemplate(@Param() params){
-        return this.atomicAssetsQueryService.getTemplates(params.coll_name, params.template_id, 1)
+    async getTemplate(@Param() params): Promise<ApiResponse> {
+        let templates = await this.atomicAssetsQueryService.getTemplates(params.coll_name, params.template_id, 1);
+        return {
+            success: true,
+            data: templates
+        } 
     }
 }
