@@ -18,9 +18,4 @@ describe('NfticketTransactionController', () => {
     controller = module.get<NfticketTransactionController>(NfticketTransactionController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(controller.getHello()).toBe('Hello World!');
-    });
-  });
 });

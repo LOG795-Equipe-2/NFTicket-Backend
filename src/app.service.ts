@@ -28,27 +28,4 @@ export class AppService {
   getHello(): string {
     return 'Hello World!';
   }
-
-  /**
-   * This method proposes a example way of executing a transaction on the blockchain does not require
-   * auth.
-   * 
-   * @returns 
-   */
-  async getTestEOSJs(): Promise<string> {
-    let response3
-    let response2
-    let response
-    await (async () => {
-       //response2 = await this.atomicService.getSchemas('nftikanthoth');
-      // console.log(this.ticketSchema);
-      response3 = await this.atomicService.getTemplates('nftikanthoth');
-
-      response = await this.atomicService.getAssets('anthony');
-
-      console.log(response3.rows[0]); 
-    })()
-
-    return response;
-  }
 }
