@@ -539,6 +539,8 @@ export class NfticketTransactionService {
      * Makes the validation to ensure that it is really the specified user that signed the transaction.
      * 
      * Lots of code inspired from: https://github.com/udbhav-s/wax-auth/blob/main/wax-auth/src/index.ts
+     * 
+     * Other example: https://github.com/greymass/anchor-link-demo-multipass/blob/92615393686e35fefb0c977b57b2124d05e8af8e/src/App.js#L53-L67
      */
     async validateTicketSign(signedTransactions, userName: string, serializedTransaction: Uint8Array): Promise<any> {
         if (!signedTransactions || !signedTransactions.signatures.length || !serializedTransaction) {

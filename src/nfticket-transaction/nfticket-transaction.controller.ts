@@ -138,7 +138,7 @@ export class NfticketTransactionController {
             transactionValidation.userName == '' || transactionValidation.userName == null){
             return {
                 success: false,
-                errorMessage: "Error while validating the transactions. Transaction is invalid."
+                errorMessage: "Error while validating the transactions. Transaction is invalid. Possible invalid fields: transactionId, transactionType, transactionsBody, userName"
             }
         }
 
