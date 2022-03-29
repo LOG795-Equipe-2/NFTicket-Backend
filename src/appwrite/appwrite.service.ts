@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Account, AppwriteException, Client, Database, Models, Storage, Users } from "node-appwrite"
-import { EventModel, Query } from 'src/interface/appwrite.model';
 import { EventSearchQuery } from 'src/appwrite/DTO/search-event.dto';
+import { EventModel, Query } from '../interface/appwrite.model';
 
 
 @Injectable()

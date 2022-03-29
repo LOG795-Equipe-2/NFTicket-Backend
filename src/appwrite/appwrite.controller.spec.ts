@@ -36,4 +36,18 @@ describe('AppwriteController', () => {
     await controller.deleteAllEvents({});
     expect(service.deleteAllEvents).toBeCalledTimes(0);
   });
+
+  it('search event - no confirmation', async () => {
+    jest.spyOn(service, "searchEvent").mockImplementationOnce(() => undefined);
+
+    await controller.searchEvents({name: "", locationName: "", locationCity: ""});
+    expect(service.searchEvent).toBeCalled();
+  });
+
+  it('get featured events - no confirmation', async () => {
+    jest.spyOn(service, "getFeaturedEvent").mockImplementationOnce(() => undefined);
+
+    await controller.getFeaturedEvents("");
+    expect(service.getFeaturedEvent).toBeCalled();
+  });
 });
