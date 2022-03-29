@@ -14,18 +14,6 @@ export interface Event {
 
 export interface EventModel extends Models.Document, Event { }
 
-export interface TicketCateogory {
-    name: string;
-    price: number;
-    stylingId: string;
-    eventId: string;
-    initialQuantity: number;
-    remainingQuantity: number;
-    atomicTemplateId: string;
-}
-
-export interface TicketCateogoryModel extends Models.Document, TicketCateogory { }
-
 // The appwrite sdk is missing these classes, they should be removed when the issue is resolved
 type QueryTypesSingle = string | number | boolean;
 type QueryTypesList = string[] | number[] | boolean[];

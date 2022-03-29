@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Account, AppwriteException, Client, Database, Models, Storage, Users } from "node-appwrite"
 import { EventModel, Query } from 'src/interface/appwrite.model';
-import { EventSearchQuery } from './DTO/search-event.dto';
+import { EventSearchQuery } from 'src/appwrite/DTO/search-event.dto';
 
 
 @Injectable()
@@ -109,5 +109,53 @@ export class AppwriteService {
       const events = await this.database.listDocuments<EventModel>(this.EVENTS_COLLECTION_ID, queryParams, 5, 0, "", "", ["eventTime"], ["ASC"]);
 
       return events.documents;
+
+    }
+    async getTicketsNotSold(ticketCategoryId: string){
+        try{
+            let response = await this.database.listDocuments('6221134c389c90325a38', [
+                Query.equal('categoryId', ticketCategoryId),
+                Query.equal('isSold', false)
+            ]);
+            return response.documents
+        } catch(err){
+            console.log("error: " + err);
+            throw err;
+        }
+    }
+
+    async getCollNameForEvent(ticketCategoryId: string){
+        try{
+            let ticketCategory = await this.getTicketCategory(ticketCategoryId);
+            let eventId = ticketCategory['eventId'];
+            if(eventId == null){
+                return null;
+            }
+            let response = await this.database.getDocument('62210e0672c9be723f8b', eventId);
+            return response['atomicCollName']
+        } catch(err){
+            console.log("error: " + err);
+            throw err;
+        }
+    }
+
+    async getTicketCategory(ticketCategoryId: string){
+        try{
+            let response = await this.database.getDocument('622111bde1ca95a94544', ticketCategoryId);
+            return response
+        } catch(err){
+            console.log("error: " + err);
+            throw err;
+        }
+    }
+
+    async updateTicket(ticketId, modifiedData){
+        try{
+            let response = await this.database.updateDocument('6221134c389c90325a38', ticketId, modifiedData);
+            return response
+        } catch(err){
+            console.log("error: " + err);
+            throw err;
+        }
     }
 }
