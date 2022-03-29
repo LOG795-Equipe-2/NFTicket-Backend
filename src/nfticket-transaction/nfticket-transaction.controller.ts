@@ -74,8 +74,7 @@ export class NfticketTransactionController {
     }
 
     /**
-     * Will create a ticket with specified
-     * 
+     * Will create a ticket with specified category Id.
      * 
      */
     @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to buy a ticket.'})
@@ -93,18 +92,42 @@ export class NfticketTransactionController {
             }
         }
         let transactions = await this.nfticketTransactionService.createBuyTransaction(userName, ticketCategoryId)
+        let transactionType = 'buyTicket'
+        let transactionPendingId = await this.nfticketTransactionService.createTransactionPending(userName, transactionType, JSON.stringify(transactions))
 
         return {
             success: true,
             data: {
                 transactionId: null,
-                transactionType: 'buyTicket',
+                transactionType: transactionType,
                 transactionsBody: transactions,
                 userName: userName,
-                ticketCategoryId: ticketCategoryId
+                ticketCategoryId: ticketCategoryId,
+                transactionPendingId: transactionPendingId
             }
         };    
     }
+
+     @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to sign his ticket.'})
+     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
+     @ApiQuery({ name: 'assetId', description: 'The ID of the ticket to sign.'})
+     @Get('/signTicket')
+     async getSignTicket(@Body() completeTransaction: any,
+                @Query('assetId') assetId: string,
+             @Query('userName') userName: string): Promise<ApiResponse>{
+         let transactions = await this.nfticketTransactionService.createSignTransaction(userName, assetId, completeTransaction)
+         let transactionType = 'signTicket'
+            
+         return {
+             success: true,
+             data: {
+                transactionId: null,
+                transactionType: transactionType,
+                transactionsBody: transactions,
+                userName: userName
+             }
+         };    
+     }
 
     @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })
     @Post('/validateTransaction')
@@ -133,22 +156,70 @@ export class NfticketTransactionController {
             }
         } else if(transactionValidation.transactionType == 'buyTicket'){
             this.log.info("New transaction type buyTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
-            if(transactionValidation.ticketCategoryId == '' || transactionValidation.ticketCategoryId == null){
+            if(transactionValidation.ticketCategoryId == '' || transactionValidation.ticketCategoryId == null,
+                transactionValidation.transactionPendingId == '' || transactionValidation.transactionPendingId == null){
                 return {
                     success: false,
                     errorMessage: "Error while validating the transactions. Transaction is invalid."
                 }
             }
-            //TODO: Add a validation that will allow to confirm the payment (either EOS or cash) has been done before transfering the tickets.
+
+            let transactionPendingInfo = await this.nfticketTransactionService.getTransactionPendingInfo(transactionValidation.transactionPendingId);
+            let expirationDate = transactionPendingInfo['expirationDate'] as number;
+
+            let dateNow = new Date().getTime()
+            if(expirationDate < dateNow){
+                return {
+                    success: false,
+                    errorMessage: "The transaction has expired. Please redo the transaction."
+                }
+            }
+
+            let transactionData = transactionPendingInfo['data'][0].data
+            let buyTransactionIsValidated = this.nfticketTransactionService.validateBuyOfTicketSucceded(transactionValidation.transactionId, transactionPendingInfo['eosUserName'], transactionData.quantity)
+            if(!buyTransactionIsValidated){
+                return {
+                    success: false,
+                    errorMessage: "The transfer was not correctly made. Please redo the transaction and follow the instructions"
+                }
+            }
+
             let ticketChoosen = await this.nfticketTransactionService.validateTicketBuy(transactionValidation.ticketCategoryId, transactionValidation.userName);
             if(ticketChoosen.success == false){
                 return ticketChoosen;
             }
+            
+            // Remove information about the pending transaction to save space in DB.
+            await this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
+
             return {
                 success: true,
                 data: { 
                     message: "Transfer for ticket " + ticketChoosen.$id + " with asset ID: " + ticketChoosen.assetId + " has been successfully executed."
                 }
+            }
+        } else if (transactionValidation.transactionType == 'signTicket'){
+            this.log.info("New transaction type signTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
+            if(transactionValidation.signedTransactions == '' || transactionValidation.signedTransactions == null){
+                return {
+                    success: false,
+                    errorMessage: "Error while validating the transactions. Transaction is invalid."
+                }
+            }
+            let verificationComplete = await this.nfticketTransactionService.validateTicketSign(transactionValidation.signedTransactions, transactionValidation.userName, transactionValidation.serializedTransaction)
+            
+            if(!verificationComplete){
+                return {
+                    success: false,
+                    errorMessage: "The transaction could not be verified. Please redo the transaction with the good signature."
+                }
+            }
+
+            //TODO: Validate that the asset is owned by the user that signed the trx.
+            //TODO: Actually signed the ticket on the blockchain.
+            return {
+                success: true,
+                data: transactionValidation
             }
         } else {
             return {

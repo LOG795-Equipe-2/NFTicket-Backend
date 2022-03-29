@@ -2,12 +2,10 @@ import { ConfigService } from '@nestjs/config';
 import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-query.service';
 import * as TICKET_SCHEMA from '../schemas/ticketSchema.json'; // this ts file should still be imported fine
 import { Logger } from "tslog";
+import NfticketSignatureProvider from '../utilities/NfticketSignatureProvider';
+import { Signature, PublicKey } from "eosjs/dist/eosjs-jssig";
 
 const { Api, JsonRpc, RpcError } = require('eosjs');
-import { SignatureProvider, SignatureProviderArgs } from 'eosjs/dist/eosjs-api-interfaces';
-import { PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
-import { PrivateKey } from 'eosjs/dist/eosjs-key-conversions';
-import { ec } from 'elliptic';
 const fetch = require('node-fetch');
 var _ = require('lodash');
 
@@ -15,9 +13,10 @@ var _ = require('lodash');
  * Backend class service to send and validate transactions
  * 
  */
-
 import { Injectable } from '@nestjs/common';
 import { AppwriteService } from '../appwrite/appwrite.service';
+import { GetTransactionResult, ProcessedTransaction } from 'eosjs/dist/eosjs-rpc-interfaces';
+import { RpcTransactionReceipt, BlockchainTransactionStatus } from '../utilities/RpcTransactionReceipt';
 
 export class Ticket {
     asset_id:string | null = null
@@ -45,67 +44,6 @@ export class Ticket {
     static returnTicketSchema(): any{
         return TICKET_SCHEMA
     }
-}
-
-/**
- * SignatureProvider modified for application implementation.
- * 
- * The reason why we don't just use JsSignatureProvider is to prevent
- * losing the private key if there is ever a change or a hack of the lib.
- * 
- * However, the code is very similar.
- * Source: https://github.com/EOSIO/eosjs/blob/master/src/eosjs-jssig.ts
- */
-class NfticketSignatureProvider implements SignatureProvider {
-    public keys = []
-
-    /** expensive to construct; so we do it once and reuse it */
-    defaultEc = new ec('secp256k1');
-
-    /** Construct the digest from transaction details */
-    digestFromSerializedData = (
-        chainId: string,
-        serializedTransaction: Uint8Array,
-        serializedContextFreeData?: Uint8Array,
-        e = this.defaultEc): string => {
-        const signBuf = Buffer.concat([
-            Buffer.from(chainId, 'hex'),
-            Buffer.from(serializedTransaction),
-            Buffer.from(
-                serializedContextFreeData ?
-                    new Uint8Array(e.hash().update(serializedContextFreeData).digest()) :
-                    new Uint8Array(32)
-            ),
-        ]);
-        return e.hash().update(signBuf).digest();
-    };
-
-    /** Sign a transaction */
-    async sign(
-        { chainId, requiredKeys, serializedTransaction, serializedContextFreeData }: SignatureProviderArgs
-    ): Promise<PushTransactionArgs> {
-        const digest = this.digestFromSerializedData( chainId, serializedTransaction, serializedContextFreeData);
-        const signatures = [] as string[];
-        for (const key of requiredKeys) {
-            let privateKey = PrivateKey.fromString(key)
-            this.keys.push(privateKey.getPublicKey())
-            const signature = privateKey.sign(digest, false);
-            signatures.push(signature.toString());
-        }
-
-        return { signatures, serializedTransaction, serializedContextFreeData };
-    }
-
-    getAvailableKeys(): Promise<string[]> {
-        let keys = []
-        for(let key in this.keys){
-            keys.push(key.toString())
-        }
-        return new Promise((resolve, reject) => {
-            resolve(keys);
-          });
-    };
-
 }
 
 @Injectable()
@@ -146,6 +84,112 @@ export class NfticketTransactionService {
             systemTokenBlockchain: this.systemTokenBlockchain,
             systemTokenFixedPrecision: this.systemTokenFixedPrecision
         };
+    }
+
+    async getHistory(transactionId): Promise<GetTransactionResult>{
+        const rpc = new JsonRpc(this.blockchainUrl, { fetch });
+        return await rpc.history_get_transaction(transactionId)
+    }
+
+    async createTransactionPending(userName: string, transactionType: string, data: string): Promise<string> {
+        // Since Anchor already limits us to 2 minutes to sign the transaction, a short time seems good.
+        let expireSeconds = 180 //TODO: Export this to config
+        let expireDate = new Date()
+        expireDate.setSeconds(expireDate.getSeconds() + expireSeconds)
+        let transaction = await this.appwriteService.createTransactionPending({
+            eosUserName: userName,
+            transactionType: transactionType, 
+            data: data,
+            expirationDate: expireDate.getTime()
+        })
+        return transaction.$id
+    }
+
+    async getTransactionPendingInfo(transactionPendingId){
+        let transactionPendingInfo = await this.appwriteService.getTransactionPendingInfo(transactionPendingId);
+        if(transactionPendingInfo['data'] != null){
+            transactionPendingInfo['data'] = JSON.parse(transactionPendingInfo['data'])
+        }
+        return transactionPendingInfo
+    }
+
+    async deleteTransactionPendingInfo(transactionPendingId){
+        let transactionPendingInfo = await this.appwriteService.deleteTransactionPendingInfo(transactionPendingId);
+        return transactionPendingInfo
+    }
+
+    /**
+     * Validate the transactions using the data from the receipt: https://developers.eos.io/welcome/v2.1/protocol-guides/transactions_protocol
+     * @param transactionId 
+     * @returns a boolean telling if the transaction was successful or not
+     */
+    async validateBuyOfTicketSucceded(transactionId, userName, expectedTicketPrice): Promise<boolean> {
+        this.log.info("Starting validation of buy Transaction of ticket.");
+        
+        let transactionHistory = (await this.getHistory(transactionId));
+        if(transactionHistory.trx?.receipt){
+            let transactionReceipt = transactionHistory.trx.receipt as RpcTransactionReceipt;
+
+            if(transactionReceipt.status != BlockchainTransactionStatus.EXECUTED){
+                this.log.debug("Transaction has incorrect status. Status: " + transactionReceipt.status);
+                return false;
+            }
+
+            let processedTransaction = transactionHistory.trx.trx as ProcessedTransaction
+            let processedAction = processedTransaction.actions
+
+            // For a transaction to be valid, it needs the following:
+            // - Status is "executed"
+            // - The action needs to be "transfer"
+            // - The action needs to have data "from" of the username
+            // - The action needs to have data "to" the nfticket account
+            // - The quantity needs to be good and the token type need to be the expected one.
+            // - The memo needs the event Id and category Id to be okay with the expected value
+            if(processedAction.length != 1){
+                this.log.debug("Transaction has more than one action, not valid.");
+                return false;
+            }
+
+            let action = processedAction[0]
+            if(action.name != "transfer"){
+                this.log.debug("Transaction action is not transfer, not valid.");
+                return false;
+            }
+
+            let data = action.data;
+            if(data.from != userName){
+                this.log.debug("Transaction action data from is not the user, not valid.");
+                return false;
+            }
+            if(data.to != this.tempAccountOwnerAssets){
+                this.log.debug("Transaction action data to is not the nfticket account, not valid.");
+                return false;
+            }
+
+            let quantity = data.quantity;
+            if(quantity.split(" ")[1] != this.systemTokenBlockchain){
+                this.log.debug("Transaction action quantity is not the system token, not valid.");
+                return false;
+            }
+
+            if(quantity.split(" ")[0] != expectedTicketPrice.split(" ")[0]){
+                this.log.debug("Transaction action quantity is not the expected price, not valid.");
+                return false;
+            }
+
+            //TODO: Validate memo content. Decide if it's something we want to do.
+           /* let memo = data.memo;
+            let memoParts = memo.split(" ");
+            let eventId = memoParts.find(part => part == eventId);
+            if(eventId == undefined){
+                this.log.debug("Transaction action memo does not contain the event Id, not valid.");
+                return false;
+            }*/
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -334,13 +378,32 @@ export class NfticketTransactionService {
                     from: userName,
                     to: this.tempAccountOwnerAssets,
                     quantity: ticketPrice.toFixed(this.systemTokenFixedPrecision) + ' ' + this.systemTokenBlockchain,
-                    memo: 'Buying a ticket for an event with ID: ' + eventId + ' on NFTicket platform.'
+                    memo: 'Buying a ticket for an event with ID: ' + eventId + ' and ticket category ID: ' + ticketCategoryId + 'on NFTicket platform.'
                   }
             })
         }
 
         return transactions
 
+    }
+
+    async createSignTransaction(userName: string, assetId: string, transactionComplete: any){
+        let transactions = [];
+        // Create dummy offer for the user to sign but not broadcast.
+        let dummyAtomicId = '1099511627820' //TODO: Export this to config file
+        transactions.push({
+            account: this.atomicAssetContractAccountName,
+            name: 'createoffer',
+            data: {
+                sender: userName,
+                recipient: this.tempAccountOwnerAssets,
+                sender_asset_ids: [],
+                recipient_asset_ids: [ dummyAtomicId ],
+                memo: "Validation transaction to check the authencity of the user. Not for broadcasting."
+            }
+        })
+
+        return transactions
     }
 
     async mintTicketForEvent(ticket, collName){
@@ -356,7 +419,9 @@ export class NfticketTransactionService {
                     template_id: ticketCategory['atomicTemplateId'],
                     new_asset_owner: this.tempAccountOwnerAssets,
                     immutable_data: [],
-                    mutable_data: [],
+                    mutable_data: [
+                        { key: "signed", value: [ "uint8", "0" ]},
+                    ],
                     tokens_to_back: []
             }
         }
@@ -468,6 +533,76 @@ export class NfticketTransactionService {
         await this.transfertAssetToUser(ticketChoosen.assetId, userName);
         
         return ticketChoosen
+    }
+
+    /**
+     * Makes the validation to ensure that it is really the specified user that signed the transaction.
+     * 
+     * Lots of code inspired from: https://github.com/udbhav-s/wax-auth/blob/main/wax-auth/src/index.ts
+     */
+    async validateTicketSign(signedTransactions, userName: string, serializedTransaction: Uint8Array): Promise<any> {
+        if (!signedTransactions || !signedTransactions.signatures.length || !serializedTransaction) {
+            return false;
+        }
+        const rpc = new JsonRpc(this.blockchainUrl, { fetch });
+        const api = new Api({ rpc })
+
+        // make buffer from transaction
+        const arr = [];
+        for (const key in serializedTransaction) {
+            arr.push(serializedTransaction[key]);
+        }
+        const uarr = new Uint8Array(arr);
+
+        const buf = Buffer.from(uarr);
+
+        const data = Buffer.concat([
+            Buffer.from(this.chainId, 'hex'),
+            buf,
+            Buffer.from(new Uint8Array(32)),
+        ]);
+
+        const recoveredKeys: string[] = [];
+        signedTransactions.signatures.forEach((sigstr: string) => {
+            const sig = Signature.fromString(sigstr);
+            recoveredKeys.push(
+                PublicKey.fromString(sig.recover(data).toString()).toLegacyString(),
+            );
+        });
+
+        //Public key: recoveredKeys[0]
+
+        // From here, we have the public key which signed the transaction.
+        recoveredKeys[0]
+        const claimedUser = await rpc.get_account(userName);
+        if (claimedUser?.permissions) {
+            const claimedUserKeys: string[] = [];
+            claimedUser.permissions.forEach((perm) => {
+                perm.required_auth.keys.forEach((obj) => claimedUserKeys.push(obj.key));
+            });
+
+            let match = false;
+            recoveredKeys.forEach((rk) => {
+                claimedUserKeys.forEach((ck) => {
+                if (rk == ck) match = true;
+                });
+            });
+            if (!match) {
+                return false;
+            }
+        }
+        const actions = await api.deserializeActions(
+            api.deserializeTransaction(uarr).actions,
+        );
+        const action = actions.find((a) => a.name === 'createoffer');
+        if (!action) return false;
+
+        if(action.data.sender != userName || action.data?.recipient != this.tempAccountOwnerAssets
+        || action.data.recipient_asset_ids[0] != '1099511627820'){ //TODO: Generalize asset id
+            return false;
+        }
+
+        return true;
     }
 
 }
