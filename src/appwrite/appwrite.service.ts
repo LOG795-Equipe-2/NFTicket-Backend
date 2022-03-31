@@ -3,10 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { Account, AppwriteException, Client, Database, Models, Storage, Users } from "node-appwrite"
 import { EventSearchQuery } from 'src/appwrite/DTO/search-event.dto';
 import { EventModel, Query } from '../interface/appwrite.model';
-
+import { Logger } from "tslog";
+import TransactionPendingCollItem from '../utilities/TransactionPendingCollItem';
 
 @Injectable()
 export class AppwriteService {
+    log: Logger = new Logger({ name: "AppwriteService"})
 
     private readonly EVENTS_COLLECTION_ID: string = "62210e0672c9be723f8b";
 
@@ -74,9 +76,9 @@ export class AppwriteService {
             let error = e as AppwriteException;
 
             if(error.code === 401)
-                console.error("invalid jwt");
+                this.log.error("invalid jwt");
 
-            console.error(error.message)
+            this.log.error(error.message)
             return undefined;
         }
     }
@@ -119,7 +121,7 @@ export class AppwriteService {
             ]);
             return response.documents
         } catch(err){
-            console.log("error: " + err);
+            this.log.error("error: " + err);
             throw err;
         }
     }
@@ -134,7 +136,7 @@ export class AppwriteService {
             let response = await this.database.getDocument('62210e0672c9be723f8b', eventId);
             return response['atomicCollName']
         } catch(err){
-            console.log("error: " + err);
+            this.log.error("error: " + err);
             throw err;
         }
     }
@@ -144,7 +146,7 @@ export class AppwriteService {
             let response = await this.database.getDocument('622111bde1ca95a94544', ticketCategoryId);
             return response
         } catch(err){
-            console.log("error: " + err);
+            this.log.error("error: " + err);
             throw err;
         }
     }
@@ -154,7 +156,37 @@ export class AppwriteService {
             let response = await this.database.updateDocument('6221134c389c90325a38', ticketId, modifiedData);
             return response
         } catch(err){
-            console.log("error: " + err);
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async createTransactionPending(transactionPending: TransactionPendingCollItem){
+        try{
+            let response = await this.database.createDocument('62432080ee967095751b', 'unique()', transactionPending);
+            return response
+        } catch(err){
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async getTransactionPendingInfo(transactionPendingId: string){
+        try{
+            let response = await this.database.getDocument('62432080ee967095751b', transactionPendingId);
+            return response;
+        } catch(err){
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async deleteTransactionPendingInfo(transactionPendingId: string){
+        try{
+            let response = await this.database.deleteDocument('62432080ee967095751b', transactionPendingId);
+            return response;
+        } catch(err){
+            this.log.error("error: " + err);
             throw err;
         }
     }

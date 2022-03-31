@@ -3,5 +3,6 @@
     { "name": "locationName", "type": "string" },
     { "name": "originalDateTime", "type": "string" },
     { "name": "originalPrice", "type": "string" },
-    { "name": "categoryName", "type": "string" }
+    { "name": "categoryName", "type": "string" },
+    { "name": "signed", "type": "bool" }
 ]
