@@ -1,11 +1,12 @@
-import { Controller, Get, Post, Req, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Req, Query, Body, UseGuards } from '@nestjs/common';
 import { NfticketTransactionService, Ticket } from './nfticket-transaction.service';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Logger } from "tslog";
 import ApiResponse from '../utilities/ApiResponse'
+import { AppwriteGuard } from 'src/appwrite/appwrite.guard';
 
-@ApiTags('nfticket-transaction')
-@Controller('nfticket-transaction')
+@ApiTags('transactions')
+@Controller('transactions')
 export class NfticketTransactionController {
     constructor(private readonly nfticketTransactionService: NfticketTransactionService) {}
 
@@ -38,11 +39,10 @@ export class NfticketTransactionController {
     @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to create the templates for ticket catgories', 
                     description: 'It will include the transactions to create the schema and collections if they not already on the blockchain.' })
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
-    @Post('/createTickets')
+    @UseGuards(AppwriteGuard)
+    @Post('/actions/createTickets')
     async getCreateTicket(@Body() ticketsReq: Ticket[],
                     @Query('userName') userName: string): Promise<ApiResponse>{
-        //TODO: Implement user validation
-
         let collName = this.nfticketTransactionService.getCollNameForUser(userName)
                     
         let tickets:Ticket[] = []
