@@ -5,6 +5,12 @@ import { Logger } from "tslog";
 import ApiResponse from '../utilities/ApiResponse'
 import { AppwriteGuard } from 'src/appwrite/appwrite.guard';
 
+enum TransactionType{
+    CREATE_TICKET = "createTicket",
+    BUY_TICKET = "buyTicket",
+    SIGN_TICKET = "signTicket"
+}
+
 @ApiTags('transactions')
 @Controller('transactions')
 export class NfticketTransactionController {
@@ -41,20 +47,24 @@ export class NfticketTransactionController {
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @UseGuards(AppwriteGuard)
     @Post('/actions/createTickets')
-    async getCreateTicket(@Body() ticketsReq: Ticket[],
+    async postActionsCreateTicket(@Body() ticketsReq: Ticket[],
                     @Query('userName') userName: string): Promise<ApiResponse>{
+        let transactionType = TransactionType.CREATE_TICKET;
         let collName = this.nfticketTransactionService.getCollNameForUser(userName)
-                    
+
         let tickets:Ticket[] = []
         ticketsReq.forEach((ticketToCreate) => {
             let ticket:Ticket = new Ticket(ticketToCreate);
             tickets.push(ticket)
         })
 
+
         // TODO: If there is a error relative to the templateId, we should make sure to
         // retry and/or catch it specifically.
         try{
             let ticketTransactions = await this.nfticketTransactionService.createTicketCategoryTemplate(userName, collName, tickets)
+
+            let transactionPendingId = await this.nfticketTransactionService.createTransactionPending(userName, transactionType, JSON.stringify(ticketTransactions))
             return {
                 success: true,
                 data: {
@@ -69,6 +79,30 @@ export class NfticketTransactionController {
             return {
                 success: false,
                 errorMessage : err.message
+            }
+        }
+    }
+
+        /**
+     * Will create a ticket template with specified data.
+     * 
+     * 
+     */
+    @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to create the templates for ticket catgories', 
+    description: 'It will include the transactions to create the schema and collections if they not already on the blockchain.' })
+    @UseGuards(AppwriteGuard)
+    @Post('/validate/createTickets')
+    async postValidateCreateTicket(@Body() transactionValidation: any){
+        let collName = this.nfticketTransactionService.getCollNameForUser(transactionValidation.userName)
+
+        this.log.info("New transaction type createTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
+        let templateInformations = await this.nfticketTransactionService.validateCreateTicketTemplate(collName, transactionValidation.transactionsBody)
+        return {
+            success: true,
+            data: {
+                message: "Transaction with ID " + transactionValidation.transactionId + " has been successfully validated.",
+                templates: templateInformations,
+                collName: collName
             }
         }
     }
@@ -144,16 +178,7 @@ export class NfticketTransactionController {
 
         let collName = this.nfticketTransactionService.getCollNameForUser(transactionValidation.userName)
         if(transactionValidation.transactionType == 'createTicket'){
-            this.log.info("New transaction type createTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
-            let templateInformations = await this.nfticketTransactionService.validateCreateTicketTemplate(collName, transactionValidation.transactionsBody)
-            return {
-                success: true,
-                data: {
-                    message: "Transaction with ID " + transactionValidation.transactionId + " has been successfully validated.",
-                    templates: templateInformations,
-                    collName: collName
-                }
-            }
+
         } else if(transactionValidation.transactionType == 'buyTicket'){
             this.log.info("New transaction type buyTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
             if(transactionValidation.ticketCategoryId == '' || transactionValidation.ticketCategoryId == null,
