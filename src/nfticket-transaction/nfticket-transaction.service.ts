@@ -15,7 +15,7 @@ var _ = require('lodash');
  */
 import { Injectable } from '@nestjs/common';
 import { AppwriteService } from '../appwrite/appwrite.service';
-import { GetTransactionResult, ProcessedTransaction } from 'eosjs/dist/eosjs-rpc-interfaces';
+import { GetTransactionResult, ProcessedTransaction, PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { RpcTransactionReceipt, BlockchainTransactionStatus } from '../utilities/RpcTransactionReceipt';
 
 export class Ticket {
@@ -232,6 +232,32 @@ export class NfticketTransactionService {
             this.log.error("Error happened during transaction on blockchain: " + e)
             throw e
         }
+    }
+
+    /**
+     * Pack a serialized transaction from Anchor and pushes the transaction.
+     * The result is returned.
+     * 
+     * @param signatures 
+     * @param serializedTransaction 
+     */
+    async pushTransaction(signatures, serializedTransaction){
+        const rpc = new JsonRpc(this.blockchainUrl, { fetch });
+
+        // make buffer from transaction
+        const arr = [];
+        for (const key in serializedTransaction) {
+            arr.push(serializedTransaction[key]);
+        }
+        const uarr = new Uint8Array(arr);
+
+        const objectToSend = {
+            signatures: signatures,
+            serializedTransaction: uarr
+            } as PushTransactionArgs
+
+        let result = await rpc.push_transaction(objectToSend);
+        return result
     }
 
     /**

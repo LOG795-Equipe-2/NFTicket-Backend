@@ -149,18 +149,18 @@ export class NfticketTransactionController {
      async getSignTicket(@Body() completeTransaction: any,
                 @Query('assetId') assetId: string,
              @Query('userName') userName: string): Promise<ApiResponse>{
-         let transactions = await this.nfticketTransactionService.createSignTransaction(userName, assetId, completeTransaction)
-         let transactionType = 'signTicket'
-            
-         return {
-             success: true,
-             data: {
-                transactionId: null,
-                transactionType: transactionType,
-                transactionsBody: transactions,
-                userName: userName
-             }
-         };    
+        let transactionType = TransactionType.SIGN_TICKET
+        let transactions = await this.nfticketTransactionService.createSignTransaction(userName, assetId, completeTransaction)        
+        
+        return {
+            success: true,
+            data: {
+            transactionId: null,
+            transactionType: transactionType,
+            transactionsBody: transactions,
+            userName: userName
+            }
+        };    
      }
 
     @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })
@@ -232,7 +232,7 @@ export class NfticketTransactionController {
                 }
             }
             let verificationComplete = await this.nfticketTransactionService.validateTicketSign(transactionValidation.signedTransactions, transactionValidation.userName, transactionValidation.serializedTransaction)
-            
+
             if(!verificationComplete){
                 return {
                     success: false,
