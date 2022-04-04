@@ -2,7 +2,7 @@ import { Controller, Get, Post, Req, Param } from '@nestjs/common';
 import { AtomicAssetsQueryService } from './atomic-assets-query.service';
 import { Request } from 'express';
 import { ApiTags } from '@nestjs/swagger';
-import ApiResponse from '../utilities/ApiResponse'
+import ApiResponse from '../utilities/ApiResponse.dto'
 
 @ApiTags('atomic-assets')
 @Controller('atomic-assets')

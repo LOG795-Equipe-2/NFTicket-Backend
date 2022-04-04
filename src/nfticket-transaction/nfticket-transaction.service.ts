@@ -1,6 +1,5 @@
 import { ConfigService } from '@nestjs/config';
 import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-query.service';
-import * as TICKET_SCHEMA from '../schemas/ticketSchema.json'; // this ts file should still be imported fine
 import { Logger } from "tslog";
 import NfticketSignatureProvider from '../utilities/NfticketSignatureProvider';
 import { Signature, PublicKey } from "eosjs/dist/eosjs-jssig";
@@ -17,34 +16,8 @@ import { Injectable } from '@nestjs/common';
 import { AppwriteService } from '../appwrite/appwrite.service';
 import { GetTransactionResult, ProcessedTransaction, PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { RpcTransactionReceipt, BlockchainTransactionStatus } from '../utilities/RpcTransactionReceipt';
-
-export class Ticket {
-    asset_id:string | null = null
-
-    eventName:string
-    locationName:string
-    originalDateTime:string
-    originalPrice:number
-    categoryName:string
-    numberOfTickets:number
-
-    constructor(jsonObject: any){
-        this.eventName = jsonObject.eventName
-        this.locationName = jsonObject.locationName
-        this.originalDateTime = jsonObject.originalDateTime
-        this.originalPrice = jsonObject.originalPrice
-        this.categoryName = jsonObject.categoryName
-        this.numberOfTickets = jsonObject.numberOfTickets
-    }
-
-    static getSchemaName(){
-        return "ticket"
-    }
-
-    static returnTicketSchema(): any{
-        return TICKET_SCHEMA
-    }
-}
+import { Ticket } from '../utilities/TicketObject.dto';
+import { EosTransactionRequestObject } from 'src/utilities/EosTransactionRequestObject.dto';
 
 @Injectable()
 export class NfticketTransactionService {
@@ -111,6 +84,18 @@ export class NfticketTransactionService {
             transactionPendingInfo['data'] = JSON.parse(transactionPendingInfo['data'])
         }
         return transactionPendingInfo
+    }
+
+    async validateTransactionPendingDate(transactionPendingId): Promise<boolean>{
+        let transactionPendingInfo = await this.getTransactionPendingInfo(transactionPendingId);
+        let expirationDate = transactionPendingInfo['expirationDate'] as number;
+
+        let dateNow = new Date().getTime()
+        if(expirationDate < dateNow){
+            return false;
+        } else {
+            return true;
+        }
     }
 
     async deleteTransactionPendingInfo(transactionPendingId){
@@ -257,7 +242,25 @@ export class NfticketTransactionService {
             } as PushTransactionArgs
 
         let result = await rpc.push_transaction(objectToSend);
+        this.log.info("Transaction pushed on blockchain: " + result.transaction_id);
         return result
+    }
+
+    async deserializeTransactionsActions(serializedTransaction){
+        const rpc = new JsonRpc(this.blockchainUrl, { fetch });
+        const api = new Api({ rpc })
+
+        const arr = [];
+        for (const key in serializedTransaction) {
+            arr.push(serializedTransaction[key]);
+        }
+        const uarr = new Uint8Array(arr);
+
+        const actions = await api.deserializeActions(
+            api.deserializeTransaction(uarr).actions,
+        );
+
+        return actions;
     }
 
     /**
@@ -287,12 +290,12 @@ export class NfticketTransactionService {
         return newArray;
     }
 
-    async createTicketCategoryTemplate(userName, collName, tickets: Ticket[]) {
+    async createTicketCategoryTemplate(userName, collName, tickets: Ticket[]): Promise<EosTransactionRequestObject[]> {
         if(collName.length != 12){
             throw new Error("Collection Name must be exactly 12 characters.")
         }
 
-        let transactions = [];
+        let transactions: EosTransactionRequestObject[] = [];
         let collResults = await this.atomicAssetsService.getCollections(collName, 1)
         if(collResults.rows.length != 1){
             this.log.info("Collection " + collName + " does not exist on the blockchain. Adding a trx to create it...")
@@ -347,7 +350,7 @@ export class NfticketTransactionService {
                             {"key": "name", value: ["string", ticket.eventName]},
                             {"key": "locationName", value: ["string", ticket.locationName]},
                             {"key": "originalDateTime", value: ["string", ticket.originalDateTime]},
-                            {"key": "originalPrice", "value": ["string", ticket.originalPrice]},
+                            {"key": "originalPrice", "value": ["string", ticket.originalPrice.toString()]},
                             {"key": "categoryName", "value": ["string", ticket.categoryName]}
                         ]
                 }
@@ -495,17 +498,28 @@ export class NfticketTransactionService {
         this.appwriteService.updateTicket(ticketId, modifiedData)
     }
 
-    async validateCreateTicketTemplate(collName: string, transactionsBody: any[]): Promise<any[]>{
-        let createTemplTransactionsDone = transactionsBody.filter((element) => element.name == 'createtempl')
+    /**
+     * Allows to extract the data from the blockchain of the templates that are in a recent transactionBody actions.
+     * This is particularly useful to get the id's of the data that were created, in order to store them in the DB.
+     * This behavior could be changed in the future, if atomicAssets returns us the template_id on creation.
+     * 
+     * In this, we also manage the special case in which the property originalPrice (which is an app specific parameters)
+     * in which is equal to zero. This is managed differently, because or else the comparison might fail.
+     * 
+     * @param collName 
+     * @param transactionsBody 
+     * @returns The corresponding data of the template, including the id.
+     */
+    async extractTemplateObjectFromTrx(collName: string, transactionsBody: any[]): Promise<any[]>{
+        let createTemplTransactionsImmutableData = transactionsBody.filter((element) => element.name == 'createtempl')
                                         .map((element) => element.data.immutable_data);
-        let createTemplTransactionsDoneObj = this.convertAtomicAssetsArrayToJsonArray(createTemplTransactionsDone)
+        let createTemplTransactionsImmutableDataObject = this.convertAtomicAssetsArrayToJsonArray(createTemplTransactionsImmutableData)
 
-        // Take 3 more templates as a precaution. Even if you own the collection.
-        let allTemplates = await this.atomicAssetsService.getTemplates(collName, null, createTemplTransactionsDone.length + 3, true)
-        let templatesWithId = []
-
-        for(let rowData of allTemplates.rows){
-            let template = createTemplTransactionsDoneObj.find((element) => {
+        // Take 3 more templates than the number we know we need as a precaution, even if we own the collection.
+        let templates = await this.atomicAssetsService.getTemplates(collName, null, createTemplTransactionsImmutableData.length + 3, true)
+        let filteredTemplates = []
+        for(let rowData of templates.rows){
+            let template = createTemplTransactionsImmutableDataObject.find((element) => {
                 // We need to check if == 0, cause it is the case of a category ticket being free
                 if(element.originalPrice || element.originalPrice === 0)
                     element.originalPrice = element.originalPrice.toString()
@@ -513,11 +527,14 @@ export class NfticketTransactionService {
             })
             if(typeof(template) !== "undefined"){
                 template['template_id'] = rowData.template_id
-                templatesWithId.push(template)
+                filteredTemplates.push(template)
             }
         }
+        return filteredTemplates;
+    }
 
-        return templatesWithId;
+    async validateTransactionActionsEquals(actionsExpected, actionsActual){
+        return _.isMatch(actionsActual, actionsExpected)
     }
 
     async validateTicketBuy(ticketCategoryId, userName){
