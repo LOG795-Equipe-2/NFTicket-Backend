@@ -29,6 +29,8 @@
     "@nestjs/swagger": "^5.2.0",
     "appwrite": "^7.0.0",
     "atomicassets": "^1.4.2",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.13.2",
     "cors": "^2.8.5",
     "eosjs": "^22.1.0",
     "lodash": "^4.17.21",
