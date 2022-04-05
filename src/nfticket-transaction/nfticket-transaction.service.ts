@@ -144,29 +144,34 @@ export class NfticketTransactionService {
         // - The quantity needs to be good and the token type need to be the expected one.
         // - The memo needs the event Id and category Id to be okay with the expected value
         if(actions.length != 1){
-            this.log.debug("Transaction has more than one action, not valid.");
-            messages.push("Transaction has more than one action, not valid.");
+            let message = "Transaction has more than one action, not valid."
+            this.log.debug(message);
+            messages.push(message);
         }
 
         let data = action.data;
         if(data.from != userName){
-            this.log.debug("Transaction action data from is not the user, not valid.");
-            messages.push("Transaction action data from is not the user, not valid.");
+            let message = "Transaction action data from is not the user, not valid."
+            this.log.debug(message);
+            messages.push(message);
         }
         if(data.to != this.tempAccountOwnerAssets){
-            this.log.debug("Transaction action data to is not the nfticket account, not valid.");
-            messages.push("Transaction action data to is not the nfticket account, not valid.");
+            let message = "Transaction action data to is not the nfticket account, not valid."
+            this.log.debug(message);
+            messages.push(message);
         }
 
         let quantity = data.quantity;
         if(quantity.split(" ")[1] != this.systemTokenBlockchain){
-            this.log.debug("Transaction action quantity is not the system token, not valid.");
-            messages.push("Transaction action quantity is not the system token, not valid.");
+            let message = "Transaction action data quantity is not the expected token type, not valid."
+            this.log.debug(message);
+            messages.push(message);
         }
 
         if(quantity.split(" ")[0] != expectedTicketPrice.split(" ")[0]){
-            this.log.debug("Transaction action quantity is not the expected price, not valid.");
-            messages.push("Transaction action quantity is not the expected price, not valid.");
+            let message = "Transaction action data quantity is not the expected ticket price, not valid."
+            this.log.debug(message);
+            messages.push(message);
         }
 
         //TODO: Validate memo content. Decide if it's something we want to do.
