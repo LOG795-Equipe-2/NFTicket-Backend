@@ -373,7 +373,7 @@ export class NfticketTransactionService {
     }
 
     async getRemainingTickets(ticketCategoryId: string) {
-        let ticketsNotSold = await this.appwriteService.getTicketsNotSold(ticketCategoryId)
+        let ticketsNotSold = await this.appwriteService.getTicketsAvailable(ticketCategoryId)
         return ticketsNotSold;        
     }
 
@@ -382,8 +382,13 @@ export class NfticketTransactionService {
         return ticketsNotSold;        
     }
 
-    chooseTicketAndReserve(tickets){
-        //TODO: reserve the tickets in the DB to prevent it being stolen while transactionning.
+    async chooseTicketAndReserve(tickets, seconds: number){
+        // Reserve the tickets in the DB to prevent it being stolen while transactionning.
+        let reservedUntil = new Date();
+        reservedUntil.setSeconds(reservedUntil.getSeconds() + seconds);
+        await this.updateTicket(tickets[0].$id, {
+            reservedUntil: reservedUntil.getTime()
+        });
         return tickets[0]
     }
 
@@ -393,12 +398,12 @@ export class NfticketTransactionService {
         return remainingTickets.length > 0
     }
 
-    async createBuyTransaction(userName: string, ticketCategoryId: string){
+    async createBuyTransaction(userName: string, ticketCategoryId: string): Promise<EosTransactionRequestObject[]>{
         let ticketCategory = await this.appwriteService.getTicketCategory(ticketCategoryId)
         let ticketPrice = parseFloat(ticketCategory['price']);
         let eventId = ticketCategory['eventId']
 
-        let transactions = [];
+        let transactions: EosTransactionRequestObject[] = [];
         if(ticketPrice > 0){
             transactions.push({
                 account: this.transferContractName,
@@ -537,17 +542,20 @@ export class NfticketTransactionService {
         return _.isMatch(actionsActual, actionsExpected)
     }
 
-    async validateTicketBuy(ticketCategoryId, userName){
-        // Check if remaining tickets
-        let remainingTickets = await this.getRemainingTickets(ticketCategoryId);
-        if(remainingTickets.length == 0){
+    async validateTicketBuy(choosenTicketId, userName){
+        // Get the ticket and check if it's still available
+        let ticketChoosen = await this.appwriteService.getTicket(choosenTicketId)
+        console.log(ticketChoosen);
+        if(ticketChoosen['isSold'] && ticketChoosen['isSold'] == true){
             return {
                 "success": false,
-                "data" : "No tickets remaining for this category"
+                "data" : "Ticket was sold before you could buy it."
             }
         }
 
-        let collNameEvent = await this.getCollNameForEvent(ticketCategoryId)   
+        // Get the collname for the event for minting if necessary
+        let ticketCategory = await this.appwriteService.getTicketCategory(ticketChoosen['categoryId'])
+        let collNameEvent = await this.getCollNameForEvent(ticketCategory.$id)   
         if(collNameEvent == null || collNameEvent == ''){
             return {
                 "success": false,
@@ -555,25 +563,22 @@ export class NfticketTransactionService {
             }
         }
 
-        // Choose one of the tickets
-        let ticketChoosen = await this.chooseTicketAndReserve(remainingTickets)
-
         // Set as sold, since we already confirmed the payment here
         await this.updateTicket(ticketChoosen.$id, {
             isSold: true
         });
 
         // Mint the ticket if necessary
-        if(ticketChoosen.assetId == null){
-            ticketChoosen.assetId = await this.mintTicketForEvent(ticketChoosen, collNameEvent)
+        if(ticketChoosen['assetId'] == null){
+            ticketChoosen['assetId'] = await this.mintTicketForEvent(ticketChoosen, collNameEvent)
 
             await this.updateTicket(ticketChoosen.$id, {
-                assetId: ticketChoosen.assetId
+                assetId: ticketChoosen['assetId']
             });
         }
 
         // Create the transfer to the buyer
-        await this.transfertAssetToUser(ticketChoosen.assetId, userName);
+        await this.transfertAssetToUser(ticketChoosen['assetId'], userName);
         
         return ticketChoosen
     }

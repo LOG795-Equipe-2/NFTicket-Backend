@@ -81,12 +81,19 @@ export class AppwriteService {
         }
     }
 
-    async getTicketsNotSold(ticketCategoryId: string){
+    /**
+     * Get the tickets available in the db, which are not sold and not reserved.
+     * @param ticketCategoryId 
+     * @returns 
+     */
+    async getTicketsAvailable(ticketCategoryId: string){
+        let dateTimeNow = (new Date()).getTime()
         try{
             let response = await this.database.listDocuments('6221134c389c90325a38', [
-                Query.equal('categoryId', ticketCategoryId),
-                Query.equal('isSold', false)
-            ]);
+                 Query.equal('categoryId', ticketCategoryId),
+                 Query.equal('isSold', false),
+                 Query.lesser('reservedUntil', dateTimeNow),
+             ]);
             return response.documents
         } catch(err){
             this.log.error("error: " + err);
@@ -112,6 +119,16 @@ export class AppwriteService {
     async getTicketCategory(ticketCategoryId: string){
         try{
             let response = await this.database.getDocument('622111bde1ca95a94544', ticketCategoryId);
+            return response
+        } catch(err){
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async getTicket(ticketId: string){
+        try{
+            let response = await this.database.getDocument('6221134c389c90325a38', ticketId);
             return response
         } catch(err){
             this.log.error("error: " + err);

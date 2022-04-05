@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Req, Query, Body, UseGuards, ValidationPipe, UsePipes, Delete } from '@nestjs/common';
 import { NfticketTransactionService } from './nfticket-transaction.service';
-import { Ticket, TicketsQuery } from '../utilities/TicketObject.dto';
+import { TicketsQuery } from '../utilities/TicketObject.dto';
 import { ApiTags, ApiOperation, ApiQuery, ApiHeader } from '@nestjs/swagger';
 import { Logger } from "tslog";
 import ApiResponse, { ApiTransactionsActionsResponse } from '../utilities/ApiResponse.dto'
@@ -182,19 +182,35 @@ export class NfticketTransactionController {
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @ApiQuery({ name: 'ticketCategoryId', description: 'The ID of the category to buy a ticket from.'})
     @ApiTags(SwaggerApiTags.ACTIONS)
+    @UsePipes(new ValidationPipe())
     @Post(TransactionRoutes.ACTIONS + '/buyTickets')
     async postActionsBuyTicket(@Query('ticketCategoryId') ticketCategoryId: string,
-            @Query('userName') userName: string): Promise<ApiResponse>{
+            @Query('userName') userName: string): Promise<ApiTransactionsActionsResponse>{
         let transactionType = TransactionType.BUY_TICKET;
-        let ticketsRemaining = await this.nfticketTransactionService.checkIfTicketRemaining(ticketCategoryId);
-        if(!ticketsRemaining){
+        
+        // Check first if there are tickets remaining.
+        let ticketsRemaining = await this.nfticketTransactionService.getRemainingTickets(ticketCategoryId);
+        if(!ticketsRemaining || ticketsRemaining.length <= 0){
             return {
                 success: false,
                 errorMessage: "There are no tickets remaining for this category"
             }
         }
+        // Reserve the ticket in the DB
+        let reservedTime = 5 * 60
+        let choosenTicket = await this.nfticketTransactionService.chooseTicketAndReserve(ticketsRemaining, reservedTime);
+
+        // Create the transaction
         let transactions = await this.nfticketTransactionService.createBuyTransaction(userName, ticketCategoryId)
-        let transactionPendingId = await this.nfticketTransactionService.createTransactionPending(userName, transactionType, JSON.stringify(transactions))
+
+        // Create the pending transaction
+        // Send the chosenTicketId in the transactionPending to get it later
+        let transactionPendingId = await this.nfticketTransactionService.createTransactionPending(userName, 
+            transactionType, 
+            JSON.stringify({
+                ...transactions, 
+                choosenTicketId: choosenTicket.$id
+        }))
 
         return {
             success: true,
@@ -203,7 +219,6 @@ export class NfticketTransactionController {
                 transactionType: transactionType,
                 transactionsBody: transactions,
                 userName: userName,
-                ticketCategoryId: ticketCategoryId,
                 transactionPendingId: transactionPendingId
             }
         };    
@@ -211,22 +226,14 @@ export class NfticketTransactionController {
 
     /**
      * Will buy the ticket for the user.
-     * 
-     * 
-     */
+    */
     @ApiOperation({ summary: 'Save the buying transactions for the tickets specified and saves the elements in the database' })
     @ApiTags(SwaggerApiTags.VALIDATE)
+    @UsePipes(new ValidationPipe())
     @Post(TransactionRoutes.VALIDATE + '/buyTickets')
-    async postValidateBuyTickets(@Body() transactionValidation: any){
+    async postValidateBuyTickets(@Body() transactionValidation: NfticketTransactionObject){
         let transactionType = TransactionType.BUY_TICKET;
         this.log.info("New transaction type buyTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
-        if(transactionValidation.ticketCategoryId == '' || transactionValidation.ticketCategoryId == null,
-            transactionValidation.transactionPendingId == '' || transactionValidation.transactionPendingId == null){
-            return {
-                success: false,
-                errorMessage: "Error while validating the transactions. Transaction is invalid."
-            }
-        }
 
         let transactionPendingInfo = await this.nfticketTransactionService.getTransactionPendingInfo(transactionValidation.transactionPendingId);
         let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionValidation.transactionPendingId)
@@ -237,26 +244,49 @@ export class NfticketTransactionController {
             }
         }
 
+        //Broadcast the transaction to the blockchain
+        let broadcasedTransactionId = ''
+        try{
+            let transactionPushed = await this.nfticketTransactionService.pushTransaction(transactionValidation.signatures, transactionValidation.serializedTransaction)
+            broadcasedTransactionId = transactionPushed.transaction_id
+        } catch(err){
+            //An error happend
+            this.log.error("An error has happened while trying to push the transaction to the blockchain: " + err.message)
+            return {
+                success: false,
+                errorMessage: "An error has happened while trying to push the transaction to the blockchain, please retry."
+            }
+        }
+
+        // Validate that the buy function worked.
+        // TODO: review the validation process, since we are now broadcasting the transaction to the blockchain, it might be easier to validate before pushing it.
         let transactionData = transactionPendingInfo['data'][0].data
         let buyTransactionIsValidated = this.nfticketTransactionService.validateBuyOfTicketSucceded(transactionValidation.transactionId, transactionPendingInfo['eosUserName'], transactionData.quantity)
         if(!buyTransactionIsValidated){
             return {
                 success: false,
-                errorMessage: "The transfer was not correctly made. Please redo the transaction and follow the instructions"
+                errorMessage: "The transfer broadcasting failed. Please redo the transaction."
             }
         }
 
-        let ticketChoosen = await this.nfticketTransactionService.validateTicketBuy(transactionValidation.ticketCategoryId, transactionValidation.userName);
-        if(ticketChoosen.success == false){
-            return ticketChoosen;
+        let ticketChoosen
+        try{
+            //TODO: Normalize the transactionPendingInfo from Appwrite.
+            let choosenTicketId = transactionPendingInfo['data'].choosenTicketId
+            ticketChoosen = await this.nfticketTransactionService.validateTicketBuy(choosenTicketId, transactionValidation.userName);    
+        } catch(err){
+            return {
+                success: false,
+                errorMessage: "The transfer and saving of your bought ticket has failed. Please retry."
+            }
         }
-        
+
         // Remove information about the pending transaction to save space in DB.
         await this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
         return {
             success: true,
             data: { 
-                message: "Transfer for ticket " + ticketChoosen.$id + " with asset ID: " + ticketChoosen.assetId + " has been successfully executed."
+               message: "Transfer for ticket " + ticketChoosen['$id'] + " with asset ID: " + ticketChoosen['assetId'] + " has been successfully executed."
             }
         }
     }

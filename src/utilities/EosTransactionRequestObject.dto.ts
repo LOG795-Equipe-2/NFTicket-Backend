@@ -1,3 +1,4 @@
+
 export class EosTransactionRequestObject {
     account: string
     name: string
@@ -5,6 +6,7 @@ export class EosTransactionRequestObject {
             | AtomicAssetsCreateSchemaActionData 
             | AtomicAssetsCreateTemplActionData
             | AtomicAssetsAddColAuthActionData
+            | EosTokenActionData
 }
 
 /**
@@ -49,4 +51,15 @@ export class AtomicAssetsCreateTemplActionData {
 export class AtomicAssetsAddColAuthActionData {
     collection_name: string
     account_to_add: string
+}
+
+/*
+* https://developers.eos.io/manuals/eosjs/v22.1/how-to-guides/how-to-transfer-an-eosio-token
+* https://github.com/EOSIO/eosio.contracts/blob/52fbd4ac7e6c38c558302c48d00469a4bed35f7c/contracts/eosio.token/include/eosio.token/eosio.token.hpp#L83
+* */
+export class EosTokenActionData {
+    from: string
+    to: string
+    quantity: string
+    memo: string
 }
