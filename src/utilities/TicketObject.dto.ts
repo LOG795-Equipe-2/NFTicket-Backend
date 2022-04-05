@@ -1,9 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsString, IsInt, IsNumber, Min, IsNotEmpty, ValidateNested, IsNumberString } from 'class-validator';
 import * as TICKET_SCHEMA from '../schemas/ticketSchema.json'; // this ts file should still be imported fine
 
 export class Ticket {
+    @ApiHideProperty()
     asset_id:string | null = null
 
     @IsString()

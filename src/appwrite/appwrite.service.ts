@@ -5,6 +5,14 @@ import { Logger } from "tslog";
 import { Account, AppwriteException, Client, Database, Models, Storage, Users } from "node-appwrite"
 import TransactionPendingCollItem from '../utilities/TransactionPendingCollItem';
 
+enum AppwriteDatabaseTable{
+    TICKET_CATEGORIES = '622111bde1ca95a94544',
+    TICKETS = '6221134c389c90325a38',
+    EOS_INFO = '621fcb8641b53f76bc95',
+    EVENTS = '62210e0672c9be723f8b',
+    TICKET_CATEGORY_STYLINGS = '622112b4efbb25929545',
+    TRANSACTIONS_PENDING = '62432080ee967095751b'
+}
 
 @Injectable()
 export class AppwriteService {
@@ -89,7 +97,7 @@ export class AppwriteService {
     async getTicketsAvailable(ticketCategoryId: string){
         let dateTimeNow = (new Date()).getTime()
         try{
-            let response = await this.database.listDocuments('6221134c389c90325a38', [
+            let response = await this.database.listDocuments(AppwriteDatabaseTable.TICKETS, [
                  Query.equal('categoryId', ticketCategoryId),
                  Query.equal('isSold', false),
                  Query.lesser('reservedUntil', dateTimeNow),
@@ -108,7 +116,7 @@ export class AppwriteService {
             if(eventId == null){
                 return null;
             }
-            let response = await this.database.getDocument('62210e0672c9be723f8b', eventId);
+            let response = await this.database.getDocument(AppwriteDatabaseTable.EVENTS, eventId);
             return response['atomicCollName']
         } catch(err){
             this.log.error("error: " + err);
@@ -118,7 +126,17 @@ export class AppwriteService {
 
     async getTicketCategory(ticketCategoryId: string){
         try{
-            let response = await this.database.getDocument('622111bde1ca95a94544', ticketCategoryId);
+            let response = await this.database.getDocument(AppwriteDatabaseTable.TICKET_CATEGORIES, ticketCategoryId);
+            return response
+        } catch(err){
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async updateTicketCategory(ticketCategoryId, modifiedData){
+        try{
+            let response = await this.database.updateDocument(AppwriteDatabaseTable.TICKET_CATEGORIES, ticketCategoryId, modifiedData);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -128,7 +146,7 @@ export class AppwriteService {
 
     async getTicket(ticketId: string){
         try{
-            let response = await this.database.getDocument('6221134c389c90325a38', ticketId);
+            let response = await this.database.getDocument(AppwriteDatabaseTable.TICKETS, ticketId);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -138,7 +156,7 @@ export class AppwriteService {
 
     async updateTicket(ticketId, modifiedData){
         try{
-            let response = await this.database.updateDocument('6221134c389c90325a38', ticketId, modifiedData);
+            let response = await this.database.updateDocument(AppwriteDatabaseTable.TICKETS, ticketId, modifiedData);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -148,7 +166,7 @@ export class AppwriteService {
 
     async createTransactionPending(transactionPending: TransactionPendingCollItem){
         try{
-            let response = await this.database.createDocument('62432080ee967095751b', 'unique()', transactionPending);
+            let response = await this.database.createDocument(AppwriteDatabaseTable.TRANSACTIONS_PENDING, 'unique()', transactionPending);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -158,7 +176,7 @@ export class AppwriteService {
 
     async getTransactionPendingInfo(transactionPendingId: string){
         try{
-            let response = await this.database.getDocument('62432080ee967095751b', transactionPendingId);
+            let response = await this.database.getDocument(AppwriteDatabaseTable.TRANSACTIONS_PENDING, transactionPendingId);
             return response;
         } catch(err){
             this.log.error("error: " + err);
@@ -168,7 +186,7 @@ export class AppwriteService {
 
     async deleteTransactionPendingInfo(transactionPendingId: string){
         try{
-            let response = await this.database.deleteDocument('62432080ee967095751b', transactionPendingId);
+            let response = await this.database.deleteDocument(AppwriteDatabaseTable.TRANSACTIONS_PENDING, transactionPendingId);
             return response;
         } catch(err){
             this.log.error("error: " + err);

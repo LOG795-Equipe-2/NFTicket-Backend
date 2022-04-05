@@ -167,7 +167,7 @@ export class NfticketTransactionController {
         let templateInformations = await this.nfticketTransactionService.extractTemplateObjectFromTrx(collName, transactionPendingInfo.data)
 
         // Remove information about the pending transaction to save space in DB.
-        await this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
+        this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
         return {
             success: true,
             data: {
@@ -238,34 +238,32 @@ export class NfticketTransactionController {
         let transactionPendingInfo = await this.nfticketTransactionService.getTransactionPendingInfo(transactionValidation.transactionPendingId);
         let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionValidation.transactionPendingId)
         if(!isTransactionPendingNotExpired){
+            this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
             return {
                 success: false,
                 errorMessage: "The transaction has expired. Please redo the transaction."
             }
         }
 
-        //Broadcast the transaction to the blockchain
-        let broadcasedTransactionId = ''
+        // Validate that the buy function worked.
+        let transactionData = transactionPendingInfo['data'][0].data
+        let buyTransactionIsValidated = this.nfticketTransactionService.validateBuyTicketsSignedTransaction(transactionValidation.signatures, transactionPendingInfo['eosUserName'], transactionValidation.serializedTransaction, transactionData.quantity)
+        if(!buyTransactionIsValidated){
+            return {
+                success: false,
+                errorMessage: "The transfer broadcasting failed. Please redo the transaction."
+            }
+        }
+
+        // Broadcast the transaction to the blockchain
         try{
-            let transactionPushed = await this.nfticketTransactionService.pushTransaction(transactionValidation.signatures, transactionValidation.serializedTransaction)
-            broadcasedTransactionId = transactionPushed.transaction_id
+            await this.nfticketTransactionService.pushTransaction(transactionValidation.signatures, transactionValidation.serializedTransaction)
         } catch(err){
             //An error happend
             this.log.error("An error has happened while trying to push the transaction to the blockchain: " + err.message)
             return {
                 success: false,
                 errorMessage: "An error has happened while trying to push the transaction to the blockchain, please retry."
-            }
-        }
-
-        // Validate that the buy function worked.
-        // TODO: review the validation process, since we are now broadcasting the transaction to the blockchain, it might be easier to validate before pushing it.
-        let transactionData = transactionPendingInfo['data'][0].data
-        let buyTransactionIsValidated = this.nfticketTransactionService.validateBuyOfTicketSucceded(transactionValidation.transactionId, transactionPendingInfo['eosUserName'], transactionData.quantity)
-        if(!buyTransactionIsValidated){
-            return {
-                success: false,
-                errorMessage: "The transfer broadcasting failed. Please redo the transaction."
             }
         }
 
@@ -282,7 +280,7 @@ export class NfticketTransactionController {
         }
 
         // Remove information about the pending transaction to save space in DB.
-        await this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
+        this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
         return {
             success: true,
             data: { 
@@ -325,15 +323,15 @@ export class NfticketTransactionController {
                 errorMessage: "Error while validating the transactions. Transaction is invalid."
             }
         }
-        await this.nfticketTransactionService.pushTransaction(transactionValidation.signedTransactions.signatures, transactionValidation.serializedTransaction)
         let verificationComplete = await this.nfticketTransactionService.validateTicketSign(transactionValidation.signedTransactions, transactionValidation.userName, transactionValidation.serializedTransaction)
-
         if(!verificationComplete){
             return {
                 success: false,
                 errorMessage: "The transaction could not be verified. Please redo the transaction with the good signature."
             }
         }
+
+        await this.nfticketTransactionService.pushTransaction(transactionValidation.signedTransactions.signatures, transactionValidation.serializedTransaction)
 
         //TODO: Validate that the asset is owned by the user that signed the trx.
         //TODO: Actually signed the ticket on the blockchain.

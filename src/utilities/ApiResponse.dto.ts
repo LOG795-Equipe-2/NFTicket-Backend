@@ -1,3 +1,4 @@
+import { ApiProperty } from "@nestjs/swagger";
 import { NfticketTransactionObject } from "./NfticketTransactionObject.dto";
 
 export default class ApiResponse {
@@ -7,5 +8,6 @@ export default class ApiResponse {
 }
 
 export class ApiTransactionsActionsResponse extends ApiResponse {
+    @ApiProperty()
     data?: NfticketTransactionObject;
 }
