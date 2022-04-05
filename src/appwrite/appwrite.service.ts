@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Query } from 'appwrite';
-import { Logger } from "tslog";
 import { Account, AppwriteException, Client, Database, Models, Storage, Users } from "node-appwrite"
+import { EventSearchQuery } from 'src/appwrite/DTO/search-event.dto';
+import { EventModel, Query } from '../interface/appwrite.model';
+import { Logger } from "tslog";
 import TransactionPendingCollItem from '../utilities/TransactionPendingCollItem';
 
 enum AppwriteDatabaseTable{
@@ -17,6 +18,8 @@ enum AppwriteDatabaseTable{
 @Injectable()
 export class AppwriteService {
     log: Logger = new Logger({ name: "AppwriteService"})
+
+    private readonly EVENTS_COLLECTION_ID: string = "62210e0672c9be723f8b";
 
     /**
      * @property This Client has admin access to Appwrite, if you need to do an action on behalf of a user
@@ -89,12 +92,43 @@ export class AppwriteService {
         }
     }
 
+    async searchEvent(query: EventSearchQuery) {
+
+        const queryParams = [
+            Query.search("name", query.name),
+            Query.search("locationCity", query.locationCity),
+        ];
+
+        if(query.locationName !== "")
+          queryParams.push(Query.search("locationName", query.locationName))
+
+          const events = await this.database.listDocuments<EventModel>(this.EVENTS_COLLECTION_ID, queryParams);
+          return events.documents;
+        
+    }
+
+    async getFeaturedEvent(city: string) {
+      let today = new Date();
+      let nextweek = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 14);
+
+      const queryParams = [
+        Query.equal("locationCity", city),
+        Query.greater("eventTime", today.getTime()),
+        Query.lesser("eventTime", nextweek.getTime())
+      ];
+
+      const events = await this.database.listDocuments<EventModel>(this.EVENTS_COLLECTION_ID, queryParams, 5, 0, "", "", ["eventTime"], ["ASC"]);
+
+      return events.documents;
+
+    }
+
     /**
      * Get the tickets available in the db, which are not sold and not reserved.
      * @param ticketCategoryId 
      * @returns 
      */
-    async getTicketsAvailable(ticketCategoryId: string){
+     async getTicketsAvailable(ticketCategoryId: string){
         let dateTimeNow = (new Date()).getTime()
         try{
             let response = await this.database.listDocuments(AppwriteDatabaseTable.TICKETS, [

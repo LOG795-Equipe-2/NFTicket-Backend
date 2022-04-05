@@ -1,5 +1,6 @@
-import { Controller, Delete, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
 import { AppwriteService } from './appwrite.service';
+import { EventSearchQuery } from './DTO/search-event.dto';
 
 @Controller('appwrite')
 export class AppwriteController {
@@ -19,5 +20,16 @@ export class AppwriteController {
     } else {
         return "this action is permanent, you need to confirm"
     }
+  }
+
+  @Post("/events/search")
+  searchEvents(@Body() query: EventSearchQuery) {
+    return this.appwriteService.searchEvent(query);
+  }
+
+  
+  @Get("/events/featured")
+  getFeaturedEvents(@Query("city") city: string) {
+    return this.appwriteService.getFeaturedEvent(city)
   }
 }
