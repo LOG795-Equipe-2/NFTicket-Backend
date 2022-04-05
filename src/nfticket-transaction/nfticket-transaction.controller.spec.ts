@@ -76,6 +76,32 @@ describe('NfticketTransactionController', () => {
       }
       expect(controller.getCollNameForUser('usernameATA1123')).toStrictEqual(expectedResponse);
     });
+
+    it('should refuse to execute request if api key and project id are not provided', async () => {
+      const expectedResponse = {
+        success: false,
+        errorMessage: 'Invalid credentials'
+      }
+      expect(await controller.deleteAllTransactionsPending(null, null)).toStrictEqual(expectedResponse);
+      expect(await controller.deleteAllTransactionsPending(undefined, undefined)).toStrictEqual(expectedResponse);
+      expect(await controller.deleteAllTransactionsPending(configService.get<string>('appwriteProjectId'), undefined)).toStrictEqual(expectedResponse);
+      expect(await controller.deleteAllTransactionsPending(undefined, configService.get<string>('appwriteSecret'))).toStrictEqual(expectedResponse);
+      expect(await controller.deleteAllTransactionsPending('dummy', 'dummy2')).toStrictEqual(expectedResponse);
+    })
+
+    it('should return success if document were correctly deleted', async () => {
+      let expectedNumberOfDocumentsDeleted = 10;
+      const expectedResponse = {
+        success: true,
+        errorMessage: expectedNumberOfDocumentsDeleted + " expired transactions pending deleted. More might remain."
+      }
+      jest.spyOn(appwriteService, 'getTransactionsPendingExpired').mockImplementation(() => 
+        Promise.resolve([{ $id: 'dummy' },{ $id: 'dummy' }, { $id: 'dummy' }, 
+        { $id: 'dummy' }, { $id: 'dummy' }, { $id: 'dummy' }, { $id: 'dummy' }, 
+        { $id: 'dummy' }, { $id: 'dummy' }, { $id: 'dummy' }])
+      );
+      expect(await controller.deleteAllTransactionsPending(configService.get<string>('appwriteProjectId'), configService.get<string>('appwriteSecret'))).toStrictEqual(expectedResponse);
+    });
   });
 
   describe('create ticket transaction', () => {

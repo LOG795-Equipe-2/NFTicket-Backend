@@ -134,7 +134,6 @@ export class AppwriteService {
      async getTicketsAvailable(ticketCategoryId: string){
         let dateTimeNow = (new Date()).getTime()
         try{
-            console.log(this.TICKETS_COLLECTION_ID)
             let response = await this.database.listDocuments(this.TICKETS_COLLECTION_ID, [
                  Query.equal('categoryId', ticketCategoryId),
                  Query.equal('isSold', false),
@@ -216,6 +215,19 @@ export class AppwriteService {
         try{
             let response = await this.database.getDocument(this.TRANSACTIONS_PENDING_COLLECTION_ID, transactionPendingId);
             return response;
+        } catch(err){
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async getTransactionsPendingExpired(){
+        let dateTimeNow = (new Date()).getTime()
+        try{
+            let response = await this.database.listDocuments(this.TRANSACTIONS_PENDING_COLLECTION_ID, [
+                 Query.lesser('expirationDate', dateTimeNow),
+             ], 100);
+            return response.documents
         } catch(err){
             this.log.error("error: " + err);
             throw err;

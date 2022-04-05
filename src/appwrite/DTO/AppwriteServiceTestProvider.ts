@@ -13,4 +13,6 @@ export class AppwriteServiceTestProvider{
     createTransactionPending = jest.fn()
     getTransactionPendingInfo = jest.fn()
     deleteTransactionPendingInfo = jest.fn()
+    deleteAllExpiredTransactionsPending = jest.fn()
+    getTransactionsPendingExpired = jest.fn()
 }

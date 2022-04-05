@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Query, Body, UseGuards, ValidationPipe, UsePipes, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Req, Query, Body, UseGuards, ValidationPipe, UsePipes, Delete, Headers } from '@nestjs/common';
 import { NfticketTransactionService } from './nfticket-transaction.service';
 import { TicketsQuery } from '../utilities/TicketObject.dto';
 import { ApiTags, ApiOperation, ApiQuery, ApiHeader } from '@nestjs/swagger';
@@ -55,12 +55,19 @@ export class NfticketTransactionController {
 
     @ApiOperation({ summary: 'Receive parameters to use to connect to the blockchain' })
     @ApiTags(SwaggerApiTags.UTILITY)
-    @Delete(TransactionRoutes.UTILITY + '/deleteAllTransactionsPending')
-    deleteAllTransactionsPending(@Query('password') password: string): ApiResponse {
-        //TODO: Implement
+    @Delete(TransactionRoutes.UTILITY + '/deleteTransactionsPendingExpired')
+    async deleteAllTransactionsPending(@Headers('X-Appwrite-Project') appwriteProjectId: string, @Headers('X-Appwrite-Key') appwriteAdminKey: string): Promise<ApiResponse> {
+        if(typeof appwriteProjectId === "undefined" || appwriteProjectId !== process.env.APPWRITE_PROJECTID
+            || typeof appwriteAdminKey === "undefined" || appwriteAdminKey !== process.env.APPWRITE_SECRET){
+            return {
+                success: false,
+                errorMessage: "Invalid credentials"
+            }
+        }
+        let deletedDocuments = await this.nfticketTransactionService.deleteAllExpiredTransactionsPending()
         return {
-            success: false,
-            errorMessage: "Not implemented yet"
+            success: true,
+            errorMessage: deletedDocuments.length + " expired transactions pending deleted. More might remain."
         };
     }
 
