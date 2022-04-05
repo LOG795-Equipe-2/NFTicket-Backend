@@ -2,48 +2,28 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NfticketTransactionController } from './nfticket-transaction.controller';
 import { NfticketTransactionModule } from './nfticket-transaction.module';
 import { NfticketTransactionService } from './nfticket-transaction.service';
-import { AtomicAssetsQueryModule } from '../atomic-assets-query/atomic-assets-query.module';
 import { AppwriteService } from '../appwrite/appwrite.service';
 import { TransactionType } from '../utilities/NfticketTransactionType';
 import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-query.service';
-import { GetTransactionResult } from 'eosjs/dist/eosjs-rpc-interfaces';
-import { Ticket } from 'src/utilities/TicketObject.dto';
+import { Ticket } from '../utilities/TicketObject.dto';
 import { ConfigService } from '@nestjs/config';
+import { AtomicAssetsQueryServiceTestProvider } from './DTO/AtomicAssetsQueryServiceTestProvider';
+import { AppwriteServiceTestProvider } from '../appwrite/DTO/AppwriteServiceTestProvider';
 
 describe('NfticketTransactionController', () => {
   let controller: NfticketTransactionController;
   let service: NfticketTransactionService;
-  let atomicAssetsService;
-  let appwriteService;
+  let atomicAssetsService: AtomicAssetsQueryServiceTestProvider;
+  let appwriteService: AppwriteServiceTestProvider;
   let configService: ConfigService
 
   beforeEach(async () => {
-    atomicAssetsService = {
-      getSchemas: jest.fn(),
-      getCollections: jest.fn(),
-      getTemplates: jest.fn(),
-      getAssets: jest.fn(),
-      deserializeData: jest.fn()
-    };
-    appwriteService = {
-      initAccountClient: jest.fn(),
-      deleteAllEvents: jest.fn(),
-      getUserIdFromJwt: jest.fn(),
-      searchEvent: jest.fn(),
-      getFeaturedEvent: jest.fn(),
-      getTicketsAvailable: jest.fn(),
-      getCollNameForEvent: jest.fn(),
-      getTicketCategory: jest.fn(),
-      updateTicketCategory: jest.fn(),
-      getTicket: jest.fn(),
-      updateTicket: jest.fn(),
-      createTransactionPending: jest.fn(),
-      getTransactionPendingInfo: jest.fn(),
-      deleteTransactionPendingInfo: jest.fn()
-    };
+    atomicAssetsService = new AtomicAssetsQueryServiceTestProvider();
+    appwriteService = new AppwriteServiceTestProvider();
 
     const module: TestingModule = await Test.createTestingModule({
-      imports: [NfticketTransactionModule, AppwriteService, ConfigService],
+      imports: [NfticketTransactionModule, AppwriteService, ConfigService, 
+        AtomicAssetsQueryServiceTestProvider, AppwriteServiceTestProvider],
       controllers: [NfticketTransactionController],
       providers: [NfticketTransactionService, AppwriteService, AtomicAssetsQueryService]
     })
@@ -53,9 +33,7 @@ describe('NfticketTransactionController', () => {
       .useValue(appwriteService)
       .compile();
 
-
     configService = module.get<ConfigService>(ConfigService);
-    appwriteService = module.get<AppwriteService>(AppwriteService);
     service = module.get<NfticketTransactionService>(NfticketTransactionService);
     controller = module.get<NfticketTransactionController>(NfticketTransactionController);
   });
