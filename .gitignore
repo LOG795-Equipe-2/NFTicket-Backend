@@ -36,3 +36,4 @@ lerna-debug.log*
 
 # environment variables
 .env
+.appwrite.env

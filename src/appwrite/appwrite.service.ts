@@ -6,20 +6,16 @@ import { EventModel, Query } from '../interface/appwrite.model';
 import { Logger } from "tslog";
 import TransactionPendingCollItem from '../utilities/TransactionPendingCollItem';
 
-enum AppwriteDatabaseTable{
-    TICKET_CATEGORIES = '622111bde1ca95a94544',
-    TICKETS = '6221134c389c90325a38',
-    EOS_INFO = '621fcb8641b53f76bc95',
-    EVENTS = '62210e0672c9be723f8b',
-    TICKET_CATEGORY_STYLINGS = '622112b4efbb25929545',
-    TRANSACTIONS_PENDING = '62432080ee967095751b'
-}
-
 @Injectable()
 export class AppwriteService {
     log: Logger = new Logger({ name: "AppwriteService"})
 
-    private readonly EVENTS_COLLECTION_ID: string = "62210e0672c9be723f8b";
+    private readonly TICKET_CATEGORIES_COLLECTION_ID: string;
+    private readonly EOS_INFO_COLLECTION_ID: string;
+    private readonly EVENTS_COLLECTION_ID: string;
+    private readonly TICKETS_COLLECTION_ID: string;
+    private readonly TICKET_CATEGORIES_STYLINGS_COLLECTION_ID: string;
+    private readonly TRANSACTIONS_PENDING_COLLECTION_ID: string;
 
     /**
      * @property This Client has admin access to Appwrite, if you need to do an action on behalf of a user
@@ -40,6 +36,13 @@ export class AppwriteService {
             .setEndpoint(this.configService.get("appwriteEndpoint"))
             .setProject(this.configService.get("appwriteProjectId"))
             .setKey(this.configService.get("appwriteSecret"));
+
+        this.TICKET_CATEGORIES_COLLECTION_ID = this.configService.get("appwriteCollectionIdTicketCategories");
+        this.EOS_INFO_COLLECTION_ID = this.configService.get("appwriteCollectionIdEosInfo");
+        this.EVENTS_COLLECTION_ID = this.configService.get("appwriteCollectionIdEvents");
+        this.TICKETS_COLLECTION_ID = this.configService.get("appwriteCollectionIdTickets");
+        this.TICKET_CATEGORIES_STYLINGS_COLLECTION_ID = this.configService.get("appwriteCollectionIdTicketCategoriesStylings");
+        this.TRANSACTIONS_PENDING_COLLECTION_ID = this.configService.get("appwriteCollectionIdTransactionsPending");
     }
 
     private initAccountClient(jwt: string) {
@@ -131,7 +134,8 @@ export class AppwriteService {
      async getTicketsAvailable(ticketCategoryId: string){
         let dateTimeNow = (new Date()).getTime()
         try{
-            let response = await this.database.listDocuments(AppwriteDatabaseTable.TICKETS, [
+            console.log(this.TICKETS_COLLECTION_ID)
+            let response = await this.database.listDocuments(this.TICKETS_COLLECTION_ID, [
                  Query.equal('categoryId', ticketCategoryId),
                  Query.equal('isSold', false),
                  Query.lesser('reservedUntil', dateTimeNow),
@@ -150,7 +154,7 @@ export class AppwriteService {
             if(eventId == null){
                 return null;
             }
-            let response = await this.database.getDocument(AppwriteDatabaseTable.EVENTS, eventId);
+            let response = await this.database.getDocument(this.EVENTS_COLLECTION_ID, eventId);
             return response['atomicCollName']
         } catch(err){
             this.log.error("error: " + err);
@@ -160,7 +164,7 @@ export class AppwriteService {
 
     async getTicketCategory(ticketCategoryId: string){
         try{
-            let response = await this.database.getDocument(AppwriteDatabaseTable.TICKET_CATEGORIES, ticketCategoryId);
+            let response = await this.database.getDocument(this.TICKET_CATEGORIES_COLLECTION_ID, ticketCategoryId);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -170,7 +174,7 @@ export class AppwriteService {
 
     async updateTicketCategory(ticketCategoryId, modifiedData){
         try{
-            let response = await this.database.updateDocument(AppwriteDatabaseTable.TICKET_CATEGORIES, ticketCategoryId, modifiedData);
+            let response = await this.database.updateDocument(this.TICKET_CATEGORIES_COLLECTION_ID, ticketCategoryId, modifiedData);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -180,7 +184,7 @@ export class AppwriteService {
 
     async getTicket(ticketId: string){
         try{
-            let response = await this.database.getDocument(AppwriteDatabaseTable.TICKETS, ticketId);
+            let response = await this.database.getDocument(this.TICKETS_COLLECTION_ID, ticketId);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -190,7 +194,7 @@ export class AppwriteService {
 
     async updateTicket(ticketId, modifiedData){
         try{
-            let response = await this.database.updateDocument(AppwriteDatabaseTable.TICKETS, ticketId, modifiedData);
+            let response = await this.database.updateDocument(this.TICKETS_COLLECTION_ID, ticketId, modifiedData);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -200,7 +204,7 @@ export class AppwriteService {
 
     async createTransactionPending(transactionPending: TransactionPendingCollItem){
         try{
-            let response = await this.database.createDocument(AppwriteDatabaseTable.TRANSACTIONS_PENDING, 'unique()', transactionPending);
+            let response = await this.database.createDocument(this.TRANSACTIONS_PENDING_COLLECTION_ID, 'unique()', transactionPending);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -210,7 +214,7 @@ export class AppwriteService {
 
     async getTransactionPendingInfo(transactionPendingId: string){
         try{
-            let response = await this.database.getDocument(AppwriteDatabaseTable.TRANSACTIONS_PENDING, transactionPendingId);
+            let response = await this.database.getDocument(this.TRANSACTIONS_PENDING_COLLECTION_ID, transactionPendingId);
             return response;
         } catch(err){
             this.log.error("error: " + err);
@@ -220,7 +224,7 @@ export class AppwriteService {
 
     async deleteTransactionPendingInfo(transactionPendingId: string){
         try{
-            let response = await this.database.deleteDocument(AppwriteDatabaseTable.TRANSACTIONS_PENDING, transactionPendingId);
+            let response = await this.database.deleteDocument(this.TRANSACTIONS_PENDING_COLLECTION_ID, transactionPendingId);
             return response;
         } catch(err){
             this.log.error("error: " + err);
