@@ -6,18 +6,12 @@ import { Logger } from "tslog";
 import ApiResponse, { ApiTransactionsActionsResponse } from '../utilities/ApiResponse.dto'
 import { AppwriteGuard } from '../appwrite/appwrite.guard';
 import { NfticketTransactionObject } from '../utilities/NfticketTransactionObject.dto';
+import { TransactionType } from '../utilities/NfticketTransactionType';
 
 enum TransactionRoutes {
     ACTIONS = "actions",
     VALIDATE = "validate",
     UTILITY = "utility"
-}
-
-enum TransactionType{
-    CREATE_TICKET = "createTicket",
-    BUY_TICKET = "buyTicket",
-    SIGN_TICKET = "signTicket",
-    CONTROL_TICKET = "controlTicket"
 }
 
 enum SwaggerApiTags{

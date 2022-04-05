@@ -274,8 +274,13 @@ export class NfticketTransactionService {
         let targetLength = 12
         let userNameLength = userName.length
         let remainingLength = targetLength - userNameLength
-
-        return this.collNamePrefix.slice(0 + variation, remainingLength + variation) + userName
+        if(remainingLength < 0) remainingLength = 0
+        
+        let newColName = this.collNamePrefix.slice(0 + variation, remainingLength + variation) + userName
+        if(newColName.length > targetLength){
+            newColName = newColName.slice(0, targetLength)
+        }
+        return newColName
     }
 
     convertAtomicAssetsArrayToJsonArray(originalArray: any[]){
