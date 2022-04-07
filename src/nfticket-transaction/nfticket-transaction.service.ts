@@ -17,9 +17,10 @@ import { AppwriteService } from '../appwrite/appwrite.service';
 import { GetTransactionResult, ProcessedTransaction, PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { RpcTransactionReceipt, BlockchainTransactionStatus } from '../utilities/RpcTransactionReceipt';
 import { Ticket } from '../utilities/TicketObject.dto';
-import { EosTransactionRequestObject } from 'src/utilities/EosTransactionRequestObject.dto';
-import { ValidationResponse } from 'src/utilities/ValidationResponse';
+import { EosTransactionRequestObject } from '../utilities/EosTransactionRequestObject.dto';
+import { ValidationResponse } from '../utilities/ValidationResponse';
 import { Models } from 'node-appwrite';
+import { PerformanceAnalyserService } from '../performance-analyser/performance-analyser.service';
 
 @Injectable()
 export class NfticketTransactionService {
@@ -39,7 +40,8 @@ export class NfticketTransactionService {
     systemTokenFixedPrecision: number
 
     constructor(private configService: ConfigService, private atomicAssetsService: AtomicAssetsQueryService, 
-            private appwriteService: AppwriteService){
+            private appwriteService: AppwriteService,
+            private performanceAnalyserService: PerformanceAnalyserService){
         this.blockchainUrl = configService.get<string>('blockchainNodeUrl')
         this.appName = configService.get<string>('appName')
         this.chainId = configService.get<string>('chainId')
@@ -204,12 +206,16 @@ export class NfticketTransactionService {
      * Is private for protection, not allowing anyone to submit transactions.
      */
     private async executeTransactionAsNfticket(actions: any) {
+        var startTime = process.hrtime();
+        let transactionsName = []
+
         const rpc = new JsonRpc(this.blockchainUrl, { fetch });
         const api = new Api({ rpc })
 
         // Complement Actions
         actions.forEach((element) => {
             element.authorization = [{actor: this.tempAccountOwnerAssets, permission: 'active'}]
+            transactionsName.push(element.name)
         })
 
         try{
@@ -234,6 +240,10 @@ export class NfticketTransactionService {
             
             // Push the signed transaction on the blockchain
             let data = await rpc.push_transaction(signedTransactions)
+            
+            // Log the time it took to execute the transaction
+            this.performanceAnalyserService.saveTransactionPerformance(process.hrtime(startTime), "executeTransactionAsNfticket", { transactionsName: transactionsName});
+            
             return data.transaction_id
         } catch(e){
             this.log.error("Error happened during transaction on blockchain: " + e)

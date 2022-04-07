@@ -25,6 +25,8 @@ TEMP_ACCOUNT_OWNER_PUB_KEY # Public key of the temp account
 TEMP_ACCOUNT_OWNER_PRIV_KEY # Private key of the owner of the created NFT's
 APPWRITE_PROJECTID # Project Id of the appwrite project
 APPWRITE_ENDPOINT # Endpoint of the appwrite instance
+
+PERFORMANCE_TRACE # For Debugging and analysing purpose, we can decide to log the executing time of choosen functions
 ```
 
 Variables pour déterminer les ID des collections Appwrite dans le fichier .appwrite.env
