@@ -12,7 +12,8 @@ import configuration from './config/configuration';
   imports: [
     ConfigModule.forRoot({
         isGlobal: true,
-        load: [configuration]
+        load: [configuration],
+        envFilePath: ['.env', '.appwrite.env']
     }),
     NfticketTransactionModule,
     AtomicAssetsQueryModule,

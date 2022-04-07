@@ -12,5 +12,13 @@ export default () => ({
   appwriteSecret: process.env.APPWRITE_SECRET,
   blockchainTokenSymbol: process.env.BLOCKCHAIN_TOKEN_SYMBOL || 'SYS',
   blockchainTransferContractName: process.env.BLOCKCHAIN_TRANSFER_CONTRACT_NAME || 'eosio.token',
-  blockchainTokenFixedPrecision: process.env.BLOCKCHAIN_TOKEN_FIXED_PRECISION || 4
+  blockchainTokenFixedPrecision: process.env.BLOCKCHAIN_TOKEN_FIXED_PRECISION || 4,
+
+  // Appwrite Tables
+  appwriteCollectionIdEvents: process.env.APPWRITE_COLLECTION_ID_EVENTS || "62210e0672c9be723f8b",
+  appwriteCollectionIdTicketCategories: process.env.APPWRITE_COLLECTION_ID_TICKET_CATEGORIES || "622111bde1ca95a94544",
+  appwriteCollectionIdTickets: process.env.APPWRITE_COLLECTION_ID_TICKETS || "6221134c389c90325a38",
+  appwriteCollectionIdEosInfo: process.env.APPWRITE_COLLECTION_ID_EOS_INFO || "621fcb8641b53f76bc95",  
+  appwriteCollectionIdTicketCategoriesStylings: process.env.APPWRITE_COLLECTION_ID_TICKET_CATEGORIES_STYLINGS || "622112b4efbb25929545",
+  appwriteCollectionIdTransactionsPending: process.env.APPWRITE_COLLECTION_ID_TRANSACTIONS_PENDING || "62432080ee967095751b",
 });

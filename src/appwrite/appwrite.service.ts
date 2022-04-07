@@ -10,7 +10,12 @@ import TransactionPendingCollItem from '../utilities/TransactionPendingCollItem'
 export class AppwriteService {
     log: Logger = new Logger({ name: "AppwriteService"})
 
-    private readonly EVENTS_COLLECTION_ID: string = "62210e0672c9be723f8b";
+    private readonly TICKET_CATEGORIES_COLLECTION_ID: string;
+    private readonly EOS_INFO_COLLECTION_ID: string;
+    private readonly EVENTS_COLLECTION_ID: string;
+    private readonly TICKETS_COLLECTION_ID: string;
+    private readonly TICKET_CATEGORIES_STYLINGS_COLLECTION_ID: string;
+    private readonly TRANSACTIONS_PENDING_COLLECTION_ID: string;
 
     /**
      * @property This Client has admin access to Appwrite, if you need to do an action on behalf of a user
@@ -31,6 +36,13 @@ export class AppwriteService {
             .setEndpoint(this.configService.get("appwriteEndpoint"))
             .setProject(this.configService.get("appwriteProjectId"))
             .setKey(this.configService.get("appwriteSecret"));
+
+        this.TICKET_CATEGORIES_COLLECTION_ID = this.configService.get("appwriteCollectionIdTicketCategories");
+        this.EOS_INFO_COLLECTION_ID = this.configService.get("appwriteCollectionIdEosInfo");
+        this.EVENTS_COLLECTION_ID = this.configService.get("appwriteCollectionIdEvents");
+        this.TICKETS_COLLECTION_ID = this.configService.get("appwriteCollectionIdTickets");
+        this.TICKET_CATEGORIES_STYLINGS_COLLECTION_ID = this.configService.get("appwriteCollectionIdTicketCategoriesStylings");
+        this.TRANSACTIONS_PENDING_COLLECTION_ID = this.configService.get("appwriteCollectionIdTransactionsPending");
     }
 
     private initAccountClient(jwt: string) {
@@ -113,12 +125,21 @@ export class AppwriteService {
       return events.documents;
 
     }
-    async getTicketsNotSold(ticketCategoryId: string){
+
+    /**
+     * Get the tickets available in the db, which are not sold and not reserved.
+     * @param ticketCategoryId 
+     * @returns 
+     */
+     async getTicketsAvailable(ticketCategoryId: string){
+        let dateTimeNow = (new Date()).getTime()
         try{
-            let response = await this.database.listDocuments('6221134c389c90325a38', [
-                Query.equal('categoryId', ticketCategoryId),
-                Query.equal('isSold', false)
-            ]);
+            console.log(this.TICKETS_COLLECTION_ID)
+            let response = await this.database.listDocuments(this.TICKETS_COLLECTION_ID, [
+                 Query.equal('categoryId', ticketCategoryId),
+                 Query.equal('isSold', false),
+                 Query.lesser('reservedUntil', dateTimeNow),
+             ]);
             return response.documents
         } catch(err){
             this.log.error("error: " + err);
@@ -133,7 +154,7 @@ export class AppwriteService {
             if(eventId == null){
                 return null;
             }
-            let response = await this.database.getDocument('62210e0672c9be723f8b', eventId);
+            let response = await this.database.getDocument(this.EVENTS_COLLECTION_ID, eventId);
             return response['atomicCollName']
         } catch(err){
             this.log.error("error: " + err);
@@ -143,7 +164,27 @@ export class AppwriteService {
 
     async getTicketCategory(ticketCategoryId: string){
         try{
-            let response = await this.database.getDocument('622111bde1ca95a94544', ticketCategoryId);
+            let response = await this.database.getDocument(this.TICKET_CATEGORIES_COLLECTION_ID, ticketCategoryId);
+            return response
+        } catch(err){
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async updateTicketCategory(ticketCategoryId, modifiedData){
+        try{
+            let response = await this.database.updateDocument(this.TICKET_CATEGORIES_COLLECTION_ID, ticketCategoryId, modifiedData);
+            return response
+        } catch(err){
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async getTicket(ticketId: string){
+        try{
+            let response = await this.database.getDocument(this.TICKETS_COLLECTION_ID, ticketId);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -153,7 +194,7 @@ export class AppwriteService {
 
     async updateTicket(ticketId, modifiedData){
         try{
-            let response = await this.database.updateDocument('6221134c389c90325a38', ticketId, modifiedData);
+            let response = await this.database.updateDocument(this.TICKETS_COLLECTION_ID, ticketId, modifiedData);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -163,7 +204,7 @@ export class AppwriteService {
 
     async createTransactionPending(transactionPending: TransactionPendingCollItem){
         try{
-            let response = await this.database.createDocument('62432080ee967095751b', 'unique()', transactionPending);
+            let response = await this.database.createDocument(this.TRANSACTIONS_PENDING_COLLECTION_ID, 'unique()', transactionPending);
             return response
         } catch(err){
             this.log.error("error: " + err);
@@ -173,7 +214,7 @@ export class AppwriteService {
 
     async getTransactionPendingInfo(transactionPendingId: string){
         try{
-            let response = await this.database.getDocument('62432080ee967095751b', transactionPendingId);
+            let response = await this.database.getDocument(this.TRANSACTIONS_PENDING_COLLECTION_ID, transactionPendingId);
             return response;
         } catch(err){
             this.log.error("error: " + err);
@@ -183,7 +224,7 @@ export class AppwriteService {
 
     async deleteTransactionPendingInfo(transactionPendingId: string){
         try{
-            let response = await this.database.deleteDocument('62432080ee967095751b', transactionPendingId);
+            let response = await this.database.deleteDocument(this.TRANSACTIONS_PENDING_COLLECTION_ID, transactionPendingId);
             return response;
         } catch(err){
             this.log.error("error: " + err);

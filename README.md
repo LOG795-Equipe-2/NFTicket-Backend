@@ -27,6 +27,16 @@ APPWRITE_PROJECTID # Project Id of the appwrite project
 APPWRITE_ENDPOINT # Endpoint of the appwrite instance
 ```
 
+Variables pour déterminer les ID des collections Appwrite dans le fichier .appwrite.env
+```bash
+APPWRITE_COLLECTION_ID_TICKET_CATEGORIES
+APPWRITE_COLLECTION_ID_TICKETS
+APPWRITE_COLLECTION_ID_EOS_INFO
+APPWRITE_COLLECTION_ID_EVENTS
+APPWRITE_COLLECTION_ID_TICKET_CATEGORIES_STYLINGS
+APPWRITE_COLLECTION_ID_TRANSACTIONS_PENDING
+```
+
 ## Description
 
 Composante backend de NFTicket

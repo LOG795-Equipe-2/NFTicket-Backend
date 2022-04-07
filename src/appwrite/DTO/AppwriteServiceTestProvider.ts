@@ -1,0 +1,16 @@
+export class AppwriteServiceTestProvider{
+    initAccountClient = jest.fn()
+    deleteAllEvents = jest.fn()
+    getUserIdFromJwt = jest.fn()
+    searchEvent = jest.fn()
+    getFeaturedEvent = jest.fn()
+    getTicketsAvailable = jest.fn()
+    getCollNameForEvent = jest.fn()
+    getTicketCategory = jest.fn()
+    updateTicketCategory = jest.fn()
+    getTicket = jest.fn()
+    updateTicket = jest.fn()
+    createTransactionPending = jest.fn()
+    getTransactionPendingInfo = jest.fn()
+    deleteTransactionPendingInfo = jest.fn()
+}
