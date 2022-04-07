@@ -243,4 +243,25 @@ export class AppwriteService {
             throw err;
         }
     }
+
+    async getTicketsByAssetIds(assetIds: string[]) {
+        try {
+            let response = await this.database.listDocuments(this.TICKETS_COLLECTION_ID, [
+                Query.equal('assetId', ["1099511945661"])
+            ]);
+            const documentsWithCategories = Promise.all(response.documents.map(async (document: any) => {
+                const category: any = await this.database.getDocument(this.TICKET_CATEGORIES_COLLECTION_ID, document.categoryId);
+                const styling = await this.database.getDocument(this.TICKET_CATEGORIES_STYLINGS_COLLECTION_ID, category.stylingId);
+                const event = await this.database.getDocument(this.EVENTS_COLLECTION_ID, category.eventId);
+                document.event = event;
+                category.styling = styling;
+                document.category = category;
+                return document;
+            }));
+            return documentsWithCategories;
+        } catch (err) {
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
 }
