@@ -122,7 +122,7 @@ export class AtomicAssetsQueryService {
    * Return all the templates for a specific collection
    * If no schemaName is provided, all schemas are returned
    */
-  async getAssets(user, limit = 100, reverse = false): Promise<GetTableRowsResult> {
+  async getAssets(user, limit = 100, reverse = false, lower_bound = null): Promise<GetTableRowsResult> {
     let rowsSaved = []
 
     let response = await this.rpc.get_table_rows({
@@ -130,7 +130,7 @@ export class AtomicAssetsQueryService {
       code: 'atomicassets',      // Contract that we target
       scope: user,      // Account that owns the data
       table: 'assets',        // Table name
-      lower_bound: null,     // Table primary key value
+      lower_bound: lower_bound,     // Table primary key value
       upper_bound: null,
       limit: limit,                // Maximum number of rows that we want to get
       reverse: reverse,           // Optional: Get reversed data

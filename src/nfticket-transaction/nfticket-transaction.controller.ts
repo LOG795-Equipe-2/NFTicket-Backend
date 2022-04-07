@@ -234,9 +234,9 @@ export class NfticketTransactionController {
     @ApiTags(SwaggerApiTags.VALIDATE)
     @UsePipes(new ValidationPipe())
     @Post(TransactionRoutes.VALIDATE + '/buyTickets')
-    async postValidateBuyTickets(@Body() transactionValidation: NfticketTransactionObject){
+    async postValidateBuyTickets(@Body() transactionValidation: NfticketTransactionObject): Promise<ApiResponse>{
         let transactionType = TransactionType.BUY_TICKET;
-        this.log.info("New transaction type buyTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
+        this.log.info("Entering into postValidateBuyTickets");
 
         let transactionPendingInfo = await this.nfticketTransactionService.getTransactionPendingInfo(transactionValidation.transactionPendingId);
         let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionValidation.transactionPendingId)
@@ -292,52 +292,107 @@ export class NfticketTransactionController {
         }
     }
 
-    @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to sign his ticket.'})
+    @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to prove his identity, so that the backend will sign the ticket.'})
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @ApiQuery({ name: 'assetId', description: 'The ID of the ticket to sign.'})
     @ApiTags(SwaggerApiTags.ACTIONS)
     @Post(TransactionRoutes.ACTIONS + '/signTicket')
-    async postActionsSignTicket(@Body() completeTransaction: any,
-            @Query('assetId') assetId: string,
-            @Query('userName') userName: string): Promise<ApiResponse>{
+    async postActionsSignTicket(@Query('assetId') assetId: string,
+            @Query('userName') userName: string): Promise<ApiTransactionsActionsResponse>{
+        if(typeof assetId !== 'string' || assetId == null || 
+            typeof userName !== 'string' || userName == null){
+            return {
+                success: false,
+                errorMessage: "The assetId is required."
+            }
+        }
         let transactionType = TransactionType.SIGN_TICKET
-        let transactions = await this.nfticketTransactionService.createSignTransaction(userName, assetId, completeTransaction)        
+
+        // Create the transaction
+        let transactions = await this.nfticketTransactionService.createSignTransaction(userName, assetId)        
         
+        // Validate that the user possess the ticket
+        let userHasTicket = await this.nfticketTransactionService.validateUserHasTicket(assetId, userName)
+        if(!userHasTicket){
+            return {
+                success: false,
+                errorMessage: "You don't have the ticket with asset ID: " + assetId
+            }
+        }
+
+        // Create the pending transaction
+        // Send the assetId of the ticket that should be signed in the transactionPending to get it later
+        let transactionPendingId = await this.nfticketTransactionService.createTransactionPending(userName, 
+            transactionType, 
+            JSON.stringify({
+                ...transactions, 
+                assetId: assetId
+        }))
         return {
             success: true,
             data: {
-            transactionId: null,
-            transactionType: transactionType,
-            transactionsBody: transactions,
-            userName: userName
+                transactionId: null,
+                transactionType: transactionType,
+                transactionsBody: transactions,
+                userName: userName,
+                transactionPendingId: transactionPendingId
             }
         };    
     }
 
-    @ApiOperation({ summary: 'TODO' })
+    @ApiOperation({ summary: 'Check that the transaction was validated by the user, and sign the ticket on the blockchain.',
+        description: 'Signing the ticket on the blockchain means changing the value of the property \'signed\' on the NFT.' })
     @ApiTags(SwaggerApiTags.VALIDATE)
+    @UsePipes(new ValidationPipe())
     @Post(TransactionRoutes.VALIDATE + '/signTicket')
-    async postValidateSignTicket(@Body() transactionValidation: any){
+    async postValidateSignTicket(@Body() transactionValidation: NfticketTransactionObject){
         let transactionType = TransactionType.SIGN_TICKET
-        this.log.info("New transaction type signTicket has been correctly registered with following ID: " + transactionValidation.transactionId)
-        if(transactionValidation.signedTransactions == '' || transactionValidation.signedTransactions == null){
+        this.log.info("Entering into postValidateSignTicket");
+        
+        let transactionPendingInfo = await this.nfticketTransactionService.getTransactionPendingInfo(transactionValidation.transactionPendingId);
+        let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionValidation.transactionPendingId)
+        if(!isTransactionPendingNotExpired){
+            this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
             return {
                 success: false,
-                errorMessage: "Error while validating the transactions. Transaction is invalid."
+                errorMessage: "The transaction has expired. Please redo the transaction."
             }
         }
-        let verificationComplete = await this.nfticketTransactionService.validateTicketSign(transactionValidation.signedTransactions, transactionValidation.userName, transactionValidation.serializedTransaction)
+        let userName = transactionPendingInfo['eosUserName'];
+        let assetId = transactionPendingInfo['data'].assetId;
+
+        // Validate that the user still possesses the ticket
+        let userHasTicket = await this.nfticketTransactionService.validateUserHasTicket(assetId, userName)
+        if(!userHasTicket){
+            return {
+                success: false,
+                errorMessage: "You don't have the ticket with asset ID: " + assetId
+            }
+        }
+
+        // Validate that the test transaction was signed correctly.
+        let verificationComplete = await this.nfticketTransactionService.validateTicketSign(transactionValidation.signatures, transactionValidation.userName, transactionValidation.serializedTransaction)
+        console.log(verificationComplete)
         if(!verificationComplete){
             return {
                 success: false,
                 errorMessage: "The transaction could not be verified. Please redo the transaction with the good signature."
             }
         }
+        
+        //Actually signed the ticket on the blockchain.
+        try{
+            await this.nfticketTransactionService.signTicketOnBlockchain(assetId, userName)
+        } catch(err){
+            this.log.error(err)
+            return {
+                success: false,
+                errorMessage: "An error has happened while trying to sign the ticket, please retry."
+            }
+        }
 
-        await this.nfticketTransactionService.pushTransaction(transactionValidation.signedTransactions.signatures, transactionValidation.serializedTransaction)
-
-        //TODO: Validate that the asset is owned by the user that signed the trx.
-        //TODO: Actually signed the ticket on the blockchain.
+        // Remove information about the pending transaction to save space in DB.
+        this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
         return {
             success: true,
             data: transactionValidation

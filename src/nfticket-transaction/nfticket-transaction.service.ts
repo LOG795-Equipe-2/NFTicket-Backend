@@ -452,7 +452,13 @@ export class NfticketTransactionService {
 
     }
 
-    async createSignTransaction(userName: string, assetId: string, transactionComplete: any){
+    /**
+     * Creates a challenge transaction to the user, that is causing no change in the blockchain.
+     * @param userName 
+     * @param assetId 
+     * @returns 
+     */
+    async createSignTransaction(userName: string, assetId: string){
         let transactions = [];
         // Create dummy offer for the user to sign but not broadcast.
         let dummyAtomicId = '1099511627820' //TODO: Export this to config file
@@ -634,15 +640,15 @@ export class NfticketTransactionService {
      * 
      * Other example: https://github.com/greymass/anchor-link-demo-multipass/blob/92615393686e35fefb0c977b57b2124d05e8af8e/src/App.js#L53-L67
      */
-    async validateTicketSign(signedTransactions, userName: string, serializedTransaction: Uint8Array): Promise<ValidationResponse> {
-        if (!signedTransactions || !signedTransactions.signatures.length || !serializedTransaction) {
+    async validateTicketSign(signatures: string[], userName: string, serializedTransaction): Promise<ValidationResponse> {
+        if (!signatures || !signatures.length || !serializedTransaction) {
             return;
         }
         let expectedActionName = 'createoffer'
         let expectedAssetIdPassed = '1099511627820'
 
         // Get the data of the actions
-        const actions = await this.getActionDataIfUserValid(signedTransactions.signatures, userName, serializedTransaction);
+        const actions = await this.getActionDataIfUserValid(signatures, userName, serializedTransaction);
         if(!actions) {
             return {
                 success: false,
@@ -770,6 +776,39 @@ export class NfticketTransactionService {
             api.deserializeTransaction(uarr).actions,
         );
         return actions;
+    }
+
+
+    async validateUserHasTicket(assetId: string, userName:string): Promise<Boolean>{
+        let assetsInfo = await this.atomicAssetsService.getAssets(userName, 1, false, assetId)
+        if(assetsInfo.rows.length != 1){
+            return false;
+        }
+        if(assetsInfo.rows[0].asset_id != assetId){
+            return false;
+        }
+        return true;
+    }
+
+    async signTicketOnBlockchain(assetId: string, userName: string){
+        let transactionObject = {
+            account: this.atomicAssetContractAccountName,
+            name: 'setassetdata',
+            data: {
+                    authorized_editor: this.tempAccountOwnerAssets,
+                    asset_owner: userName,
+                    asset_id: assetId,
+                    new_mutable_data: [
+                        { key: "signed", value: [ "uint8", "1" ]},
+                    ]
+            }
+        }
+        try{
+            await this.executeTransactionAsNfticket([transactionObject]);
+        } catch(err){
+            this.log.error("Error happenned during signing of ticket for assetID: " + assetId + " for user: " + userName + ":" + err)
+            throw err;
+        }
     }
 
     /**
