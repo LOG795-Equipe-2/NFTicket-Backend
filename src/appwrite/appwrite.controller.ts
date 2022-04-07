@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, } from '@nestjs/common';
 import { AppwriteService } from './appwrite.service';
 import { EventSearchQuery } from './DTO/search-event.dto';
 
@@ -31,5 +31,10 @@ export class AppwriteController {
   @Get("/events/featured")
   getFeaturedEvents(@Query("city") city: string) {
     return this.appwriteService.getFeaturedEvent(city)
+  }
+
+  @Get("/tickets")
+  getTicketsByAssetIds(@Query("asset-ids") assetIds: string[]) {
+    return this.appwriteService.getTicketsByAssetIds(assetIds);
   }
 }
