@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client, Database, Teams, Users } from 'node-appwrite';
-import { AppwriteService } from 'src/appwrite/appwrite.service';
 import { EventModel, Query } from 'src/interface/appwrite.model';
 import { Logger } from 'tslog';
 
@@ -26,7 +25,7 @@ export class BouncerService {
     users: Users;
     team: Teams;
 
-    constructor(private configService: ConfigService, private appwriteService: AppwriteService){
+    constructor(private configService: ConfigService){
         this.serverClient = new Client();
         this.database = new Database(this.serverClient);
         this.users = new Users(this.serverClient);

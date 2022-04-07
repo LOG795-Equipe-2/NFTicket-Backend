@@ -1,7 +1,7 @@
 import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
-import { AppwriteGuard } from 'src/appwrite/appwrite.guard';
-import ApiResponse from 'src/utilities/ApiResponse.dto';
+import { AppwriteGuard } from '../appwrite/appwrite.guard';
+import ApiResponse from '../utilities/ApiResponse.dto';
 import { BouncerGuard } from './bouncer.guard';
 import { BouncerService } from './bouncer.service';
 
