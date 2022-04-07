@@ -9,6 +9,7 @@ import { Ticket } from '../utilities/TicketObject.dto';
 import { ConfigService } from '@nestjs/config';
 import { AtomicAssetsQueryServiceTestProvider } from './DTO/AtomicAssetsQueryServiceTestProvider';
 import { AppwriteServiceTestProvider } from '../appwrite/DTO/AppwriteServiceTestProvider';
+import { PerformanceAnalyserService } from '../performance-analyser/performance-analyser.service';
 
 describe('NfticketTransactionController', () => {
   let controller: NfticketTransactionController;
@@ -25,7 +26,7 @@ describe('NfticketTransactionController', () => {
       imports: [NfticketTransactionModule, AppwriteService, ConfigService, 
         AtomicAssetsQueryServiceTestProvider, AppwriteServiceTestProvider],
       controllers: [NfticketTransactionController],
-      providers: [NfticketTransactionService, AppwriteService, AtomicAssetsQueryService]
+      providers: [NfticketTransactionService, AppwriteService, AtomicAssetsQueryService, PerformanceAnalyserService]
     })
       .overrideProvider(AtomicAssetsQueryService)
       .useValue(atomicAssetsService)

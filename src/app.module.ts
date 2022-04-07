@@ -7,6 +7,7 @@ import { NfticketTransactionModule } from './nfticket-transaction/nfticket-trans
 import { AtomicAssetsQueryModule } from './atomic-assets-query/atomic-assets-query.module';
 import { AppwriteModule } from './appwrite/appwrite.module';
 import { BouncerModule } from './bouncer/bouncer.module';
+import { PerformanceAnalyserModule } from './performance-analyser/performance-analyser.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -20,6 +21,7 @@ import configuration from './config/configuration';
     AtomicAssetsQueryModule,
     AppwriteModule,
     BouncerModule,
+    PerformanceAnalyserModule,
     // MongooseModule.forRootAsync({
     //     useFactory: async (configService: ConfigService) => ({
     //         uri: configService.get('MONGO_URI')
