@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client, Database, Teams, Users } from 'node-appwrite';
-import { EventModel, Query } from 'src/interface/appwrite.model';
+import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-query.service';
+import { EventModel, Query } from '../interface/appwrite.model';
+import { NfticketTransactionService } from '../nfticket-transaction/nfticket-transaction.service';
 import { Logger } from 'tslog';
 
 @Injectable()
@@ -25,7 +27,8 @@ export class BouncerService {
     users: Users;
     team: Teams;
 
-    constructor(private configService: ConfigService){
+    constructor(private configService: ConfigService, private atomicAssetsService: AtomicAssetsQueryService,
+            private nfticketTransactionService: NfticketTransactionService){
         this.serverClient = new Client();
         this.database = new Database(this.serverClient);
         this.users = new Users(this.serverClient);
@@ -102,5 +105,35 @@ export class BouncerService {
         }
         
         return bouncers
+    }
+
+    async validateAssetIsForEvent(eventId, assetId){
+        const dbTicket = await this.database.listDocuments(this.TICKETS_COLLECTION_ID, [
+            Query.equal("assetId", assetId)
+        ]);
+        if(dbTicket.documents.length !== 1){
+            return;
+        }
+
+        return dbTicket.documents[0]['eventId'] == eventId;
+    }
+
+    async getAssetAndCheckIfSigned(assetId, userName): Promise<boolean> {
+        let assetsInfo = await this.atomicAssetsService.getAssets(userName, 1, false, assetId)
+        if(assetsInfo.rows.length != 1){
+            return false;
+        }
+        if(assetsInfo.rows[0].asset_id != assetId){
+            return false;
+        }
+        this.log.debug('Checking if ticket is signed: ' + JSON.stringify(assetsInfo.rows[0]))
+        if(assetsInfo.rows[0].mutable_serialized_data.signed == false){
+            return false;
+        }
+        return true;
+    }
+
+    async setTicketAsUsed(assetId, userName){
+        await this.nfticketTransactionService.setTicketUsedOnBlockchain(assetId, userName)
     }
 }

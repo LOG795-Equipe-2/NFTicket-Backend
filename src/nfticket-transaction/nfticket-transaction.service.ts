@@ -811,6 +811,27 @@ export class NfticketTransactionService {
         }
     }
 
+    async setTicketUsedOnBlockchain(assetId: string, userName: string){
+        let transactionObject = {
+            account: this.atomicAssetContractAccountName,
+            name: 'setassetdata',
+            data: {
+                    authorized_editor: this.tempAccountOwnerAssets,
+                    asset_owner: userName,
+                    asset_id: assetId,
+                    new_mutable_data: [
+                        { key: "used", value: [ "uint8", "1" ]},
+                    ]
+            }
+        }
+        try{
+            await this.executeTransactionAsNfticket([transactionObject]);
+        } catch(err){
+            this.log.error("Error happenned during set of property \"used\" of ticket for assetID: " + assetId + " for user: " + userName + ":" + err)
+            throw err;
+        }
+    }
+
     /**
      * Validates that a transaction has status Executed, and returns the associated actions.
      * 
