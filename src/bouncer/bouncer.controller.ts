@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Query, UseGuards, Headers } from '@nestjs/common';
+import { Body, Controller, Param, Post, Query, UseGuards, Headers, Get } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { Logger } from 'tslog';
 import { AppwriteGuard } from '../appwrite/appwrite.guard';
@@ -138,6 +138,15 @@ export class BouncerController {
     return {
       success: true,
       data: "Ticket was validated and set as used"
+    }
+  }
+
+  @ApiOperation({summary: "Validates a bouncer"})
+  @Get("/validate")
+  @UseGuards(BouncerGuard)
+  async validateBouncer(): Promise<ApiResponse> {
+    return {
+      success: true
     }
   }
 }
