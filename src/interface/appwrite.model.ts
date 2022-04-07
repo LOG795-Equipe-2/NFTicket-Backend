@@ -7,9 +7,10 @@ export interface Event {
     locationAddress: string;
     description: string;
     imageId: string;
-    userCreatedId: string;
+    userCreatorId: string;
     eventTime: string;
     atomicCollName: string;
+    bouncers: string[];
 }
 
 export interface EventModel extends Models.Document, Event { }

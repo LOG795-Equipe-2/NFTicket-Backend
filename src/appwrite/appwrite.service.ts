@@ -45,7 +45,7 @@ export class AppwriteService {
         this.TRANSACTIONS_PENDING_COLLECTION_ID = this.configService.get("appwriteCollectionIdTransactionsPending");
     }
 
-    private initAccountClient(jwt: string) {
+    initAccountClient(jwt: string) {
         const accountClient: Client = new Client();
         accountClient
             .setEndpoint(this.configService.get("appwriteEndpoint"))

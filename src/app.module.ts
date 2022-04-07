@@ -6,6 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { NfticketTransactionModule } from './nfticket-transaction/nfticket-transaction.module';
 import { AtomicAssetsQueryModule } from './atomic-assets-query/atomic-assets-query.module';
 import { AppwriteModule } from './appwrite/appwrite.module';
+import { BouncerModule } from './bouncer/bouncer.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -18,6 +19,7 @@ import configuration from './config/configuration';
     NfticketTransactionModule,
     AtomicAssetsQueryModule,
     AppwriteModule,
+    BouncerModule,
     // MongooseModule.forRootAsync({
     //     useFactory: async (configService: ConfigService) => ({
     //         uri: configService.get('MONGO_URI')
