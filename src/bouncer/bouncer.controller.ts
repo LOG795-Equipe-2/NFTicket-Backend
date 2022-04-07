@@ -1,5 +1,6 @@
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Post, Query, UseGuards, Headers } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { Logger } from 'tslog';
 import { AppwriteGuard } from '../appwrite/appwrite.guard';
 import ApiResponse from '../utilities/ApiResponse.dto';
 import { BouncerGuard } from './bouncer.guard';
@@ -7,6 +8,8 @@ import { BouncerService } from './bouncer.service';
 
 @Controller('bouncer')
 export class BouncerController {
+  log: Logger = new Logger({ name: "BouncerControllerLogger"})
+
   constructor(private readonly bouncerService: BouncerService) {}
 
   @ApiOperation({summary: "creates a list of bouncer id"})
@@ -85,6 +88,56 @@ export class BouncerController {
 
     return {
       success
+    }
+  }
+
+  @ApiOperation({summary: "deletes a bouncer", description: "removes a bouncer if from the list of available bouncer ids"})
+  @ApiParam({name: "enventId"})
+  @ApiBody({description: "needs bouncer field"})
+  @UseGuards(BouncerGuard)
+  @Post("/controlTicket")
+  async postControlTicket(@Headers('x-nfticket-event-id') eventId, @Query('assetId') assetId: string, @Query('userName') userName): Promise<ApiResponse> {
+    if(typeof assetId === "undefined" || assetId == "" ||
+      typeof userName === "undefined" || userName == "") {
+        return {
+          success: false,
+          errorMessage: "assetID and userName are required"
+        }
+      }
+    
+    // Check that the bouncer can check event id, based on the assetId.
+    let checkBouncer = await this.bouncerService.validateAssetIsForEvent(eventId, assetId);
+    if(!checkBouncer){
+      return {
+        success: false,
+        errorMessage: "Bouncer does not have the rights to control this ticket"
+      }
+    }
+
+    //Check if assetid is valid (asset is returned by atomic asset)
+    //Check if the ticket is signed.
+    let asset = await this.bouncerService.getAssetAndCheckIfSigned(assetId, userName)
+    if(!asset) {
+      return {
+        success: false,
+        errorMessage: "The ticket is invalid or is not signed."
+      }
+    }
+
+    //TODO: Update the value of the ticket to "used"
+    try{
+      //await this.bouncerService.setTicketAsUsed(assetId, userName)      
+    } catch(err){
+      this.log.error(err)
+      return {
+        success: false,
+        errorMessage: "There was an error while controlling the ticket. Ticket is valid, but could not be set as used."
+      }
+    }
+
+    return {
+      success: true,
+      data: "Ticket was validated and set as used"
     }
   }
 }
