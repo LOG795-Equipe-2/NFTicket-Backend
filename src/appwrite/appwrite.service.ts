@@ -16,6 +16,7 @@ export class AppwriteService {
     private readonly TICKETS_COLLECTION_ID: string;
     private readonly TICKET_CATEGORIES_STYLINGS_COLLECTION_ID: string;
     private readonly TRANSACTIONS_PENDING_COLLECTION_ID: string;
+    private readonly PERFORMANCE_LOGGING_COLLECTION_ID: string;
 
     /**
      * @property This Client has admin access to Appwrite, if you need to do an action on behalf of a user
@@ -43,9 +44,10 @@ export class AppwriteService {
         this.TICKETS_COLLECTION_ID = this.configService.get("appwriteCollectionIdTickets");
         this.TICKET_CATEGORIES_STYLINGS_COLLECTION_ID = this.configService.get("appwriteCollectionIdTicketCategoriesStylings");
         this.TRANSACTIONS_PENDING_COLLECTION_ID = this.configService.get("appwriteCollectionIdTransactionsPending");
+        this.PERFORMANCE_LOGGING_COLLECTION_ID = this.configService.get("appwriteCollectionIdPerformanceLogging");
     }
 
-    private initAccountClient(jwt: string) {
+    initAccountClient(jwt: string) {
         const accountClient: Client = new Client();
         accountClient
             .setEndpoint(this.configService.get("appwriteEndpoint"))
@@ -260,6 +262,37 @@ export class AppwriteService {
             }));
             return documentsWithCategories;
         } catch (err) {
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+    async createPerformanceLogging(executionTimeMs:number, operationName:string, extraData: string){
+        try{
+            let response = await this.database.createDocument(this.PERFORMANCE_LOGGING_COLLECTION_ID, 'unique()', {
+                executionTimeMs: executionTimeMs,
+                operationName: operationName,
+                extraData: JSON.stringify(extraData)
+            });
+            return response
+        } catch(err){
+            this.log.error("error: " + err);
+            throw err;
+        }
+    }
+
+    async getAllPerformanceLoggingForOperation(operation:string){
+        try{
+            let documents = []
+
+            let results = await this.database.listDocuments(this.PERFORMANCE_LOGGING_COLLECTION_ID, [
+                 Query.equal('operationName', operation),
+             ], 100);
+             documents.push(...results.documents)
+             this.log.info(results.sum);
+             const lastId = results.documents[results.documents.length - 1].$id;
+
+            return results.documents
+        } catch(err){
             this.log.error("error: " + err);
             throw err;
         }

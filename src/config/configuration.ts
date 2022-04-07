@@ -14,6 +14,8 @@ export default () => ({
   blockchainTransferContractName: process.env.BLOCKCHAIN_TRANSFER_CONTRACT_NAME || 'eosio.token',
   blockchainTokenFixedPrecision: process.env.BLOCKCHAIN_TOKEN_FIXED_PRECISION || 4,
 
+  performanceTraceEnabled: process.env.PERFORMANCE_TRACE || false,
+
   // Appwrite Tables
   appwriteCollectionIdEvents: process.env.APPWRITE_COLLECTION_ID_EVENTS || "62210e0672c9be723f8b",
   appwriteCollectionIdTicketCategories: process.env.APPWRITE_COLLECTION_ID_TICKET_CATEGORIES || "622111bde1ca95a94544",
@@ -21,4 +23,5 @@ export default () => ({
   appwriteCollectionIdEosInfo: process.env.APPWRITE_COLLECTION_ID_EOS_INFO || "621fcb8641b53f76bc95",  
   appwriteCollectionIdTicketCategoriesStylings: process.env.APPWRITE_COLLECTION_ID_TICKET_CATEGORIES_STYLINGS || "622112b4efbb25929545",
   appwriteCollectionIdTransactionsPending: process.env.APPWRITE_COLLECTION_ID_TRANSACTIONS_PENDING || "62432080ee967095751b",
+  appwriteCollectionIdPerformanceLogging: process.env.APPWRITE_COLLECTION_ID_PERFORMANCE_LOGGING || "624ef828c1d33d44b3c5",
 });
