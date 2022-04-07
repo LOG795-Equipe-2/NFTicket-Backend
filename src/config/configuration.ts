@@ -9,7 +9,7 @@ export default () => ({
   tempAccountOwnerPrivKey: process.env.TEMP_ACCOUNT_OWNER_PRIV_KEY || "",
   appwriteEndpoint: process.env.APPWRITE_ENDPOINT || "https://appwrite.lurent.ca/v1",
   appwriteProjectId: process.env.APPWRITE_PROJECTID || "61fdaf9f85273",
-  appwriteSecret: process.env.APPWRITE_SECRET,
+  appwriteSecret: process.env.APPWRITE_SECRET || "DUMMY SECRET - FOR TESTING ONLY",
   blockchainTokenSymbol: process.env.BLOCKCHAIN_TOKEN_SYMBOL || 'SYS',
   blockchainTransferContractName: process.env.BLOCKCHAIN_TRANSFER_CONTRACT_NAME || 'eosio.token',
   blockchainTokenFixedPrecision: process.env.BLOCKCHAIN_TOKEN_FIXED_PRECISION || 4,

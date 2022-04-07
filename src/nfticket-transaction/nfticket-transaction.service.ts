@@ -19,6 +19,7 @@ import { RpcTransactionReceipt, BlockchainTransactionStatus } from '../utilities
 import { Ticket } from '../utilities/TicketObject.dto';
 import { EosTransactionRequestObject } from 'src/utilities/EosTransactionRequestObject.dto';
 import { ValidationResponse } from 'src/utilities/ValidationResponse';
+import { Models } from 'node-appwrite';
 
 @Injectable()
 export class NfticketTransactionService {
@@ -84,6 +85,15 @@ export class NfticketTransactionService {
         if(transactionPendingInfo['data'] != null){
             transactionPendingInfo['data'] = JSON.parse(transactionPendingInfo['data'])
         }
+        return transactionPendingInfo
+    }
+
+    async deleteAllExpiredTransactionsPending(): Promise<Models.Document[]>{
+        let transactionPendingInfo = await this.appwriteService.getTransactionsPendingExpired();
+        this.log.info(transactionPendingInfo.length + " marked for deletion");
+        transactionPendingInfo.forEach(d => {
+            this.appwriteService.deleteTransactionPendingInfo(d.$id)
+        })
         return transactionPendingInfo
     }
 

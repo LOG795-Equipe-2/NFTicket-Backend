@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Query, Body, UseGuards, ValidationPipe, UsePipes, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Req, Query, Body, UseGuards, ValidationPipe, UsePipes, Delete, Headers } from '@nestjs/common';
 import { NfticketTransactionService } from './nfticket-transaction.service';
 import { TicketsQuery } from '../utilities/TicketObject.dto';
 import { ApiTags, ApiOperation, ApiQuery, ApiHeader } from '@nestjs/swagger';
@@ -7,6 +7,7 @@ import ApiResponse, { ApiTransactionsActionsResponse } from '../utilities/ApiRes
 import { AppwriteGuard } from '../appwrite/appwrite.guard';
 import { NfticketTransactionObject } from '../utilities/NfticketTransactionObject.dto';
 import { TransactionType } from '../utilities/NfticketTransactionType';
+import { ConfigService } from '@nestjs/config';
 
 enum TransactionRoutes {
     ACTIONS = "actions",
@@ -28,7 +29,8 @@ enum SwaggerApiTags{
     description: 'JWT token from Appwrite',
   })
 export class NfticketTransactionController {
-    constructor(private readonly nfticketTransactionService: NfticketTransactionService) {}
+    constructor(private readonly nfticketTransactionService: NfticketTransactionService,
+        private configService: ConfigService) {}
 
     log: Logger = new Logger({ name: "NfticketTransactionControllerLogger"})
 
@@ -55,12 +57,19 @@ export class NfticketTransactionController {
 
     @ApiOperation({ summary: 'Receive parameters to use to connect to the blockchain' })
     @ApiTags(SwaggerApiTags.UTILITY)
-    @Delete(TransactionRoutes.UTILITY + '/deleteAllTransactionsPending')
-    deleteAllTransactionsPending(@Query('password') password: string): ApiResponse {
-        //TODO: Implement
+    @Delete(TransactionRoutes.UTILITY + '/deleteTransactionsPendingExpired')
+    async deleteAllTransactionsPending(@Headers('X-Appwrite-Project') appwriteProjectId: string, @Headers('X-Appwrite-Key') appwriteAdminKey: string): Promise<ApiResponse> {
+        if(typeof appwriteProjectId === "undefined" || appwriteProjectId !== this.configService.get<string>('appwriteProjectId')
+            || typeof appwriteAdminKey === "undefined" || appwriteAdminKey !== this.configService.get<string>('appwriteSecret')){
+            return {
+                success: false,
+                errorMessage: "Invalid credentials"
+            }
+        }
+        let deletedDocuments = await this.nfticketTransactionService.deleteAllExpiredTransactionsPending()
         return {
-            success: false,
-            errorMessage: "Not implemented yet"
+            success: true,
+            errorMessage: deletedDocuments.length + " expired transactions pending deleted. More might remain."
         };
     }
 
