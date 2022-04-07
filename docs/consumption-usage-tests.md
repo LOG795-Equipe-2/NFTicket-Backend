@@ -24,3 +24,7 @@
    `cleos --url=<endpoint-url> push action atomicassets mintasset '["<account-name>", "<column-name>", "<schema-name>", -1, "nfticket", [{"key":"name", "value":["string", "testName"]}, {"key":"locationName", "value":["string", "testLocation"]}, {"key":"originalDateTime", "value":["string", "2022-02-02"]}, {"key":"originalPrice", "value":["string", "100"]}, {"key":"categoryName", "value":["string", "testCategory"]}], [{"key":"signed", "value": ["uint8", "0"]}], []]' -p <account-name>@active`
 7. Mint asset (with template)
    `cleos --url=<endpoint-url> push action atomicassets mintasset '["<account-name>", "<column-name>", "<schema-name>", 65, "nfticket", [], [{"key":"signed", "value": ["uint8", "0"]}], []]' -p <account-name>@active`
+
+## Testing of large number of tickets
+
+A script `consumption_test.sh` is available at the root of the project so that it is possible to automate minting consumption usage over a large number of ticket. Just as an FYI, it is better to run this against the blockchain server locally to avoid issues with DDoS and additional time due to network latency. Uncomment the relevant sections depending on the situation.
