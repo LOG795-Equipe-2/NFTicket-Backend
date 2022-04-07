@@ -249,7 +249,7 @@ export class AppwriteService {
     async getTicketsByAssetIds(assetIds: string[]) {
         try {
             let response = await this.database.listDocuments(this.TICKETS_COLLECTION_ID, [
-                Query.equal('assetId', ["1099511945661"])
+                Query.equal('assetId', assetIds)
             ]);
             const documentsWithCategories = Promise.all(response.documents.map(async (document: any) => {
                 const category: any = await this.database.getDocument(this.TICKET_CATEGORIES_COLLECTION_ID, document.categoryId);
