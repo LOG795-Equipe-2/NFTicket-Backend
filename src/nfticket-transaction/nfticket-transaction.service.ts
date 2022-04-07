@@ -500,7 +500,6 @@ export class NfticketTransactionService {
         try{
             await this.executeTransactionAsNfticket([transactionObject]);
 
-            console.log("HERE")
             // Get asset ID of the ticket we just created.
             let allAssets = await this.atomicAssetsService.getAssets(this.tempAccountOwnerAssets, 1, true)
 
