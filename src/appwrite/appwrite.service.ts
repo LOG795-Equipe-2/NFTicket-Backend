@@ -47,7 +47,7 @@ export class AppwriteService {
         this.PERFORMANCE_LOGGING_COLLECTION_ID = this.configService.get("appwriteCollectionIdPerformanceLogging");
     }
 
-    private initAccountClient(jwt: string) {
+    initAccountClient(jwt: string) {
         const accountClient: Client = new Client();
         accountClient
             .setEndpoint(this.configService.get("appwriteEndpoint"))
