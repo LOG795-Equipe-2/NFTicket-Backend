@@ -124,6 +124,9 @@ export class BouncerController {
       }
     }
 
+    //TODO: Check if the ticket is already used.
+
+
     //TODO: Update the value of the ticket to "used"
     try{
       //await this.bouncerService.setTicketAsUsed(assetId, userName)      
