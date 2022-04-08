@@ -12,7 +12,7 @@ export default () => ({
   appwriteSecret: process.env.APPWRITE_SECRET || "DUMMY SECRET - FOR TESTING ONLY",
   blockchainTokenSymbol: process.env.BLOCKCHAIN_TOKEN_SYMBOL || 'SYS',
   blockchainTransferContractName: process.env.BLOCKCHAIN_TRANSFER_CONTRACT_NAME || 'eosio.token',
-  blockchainTokenFixedPrecision: process.env.BLOCKCHAIN_TOKEN_FIXED_PRECISION || 4,
+  blockchainTokenFixedPrecision: process.env.BLOCKCHAIN_TOKEN_FIXED_PRECISION || "4",
 
   performanceTraceEnabled: process.env.PERFORMANCE_TRACE || false,
 
