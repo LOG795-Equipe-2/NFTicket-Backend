@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Account, AppwriteException, Client, Database, Models, Storage, Users } from "node-appwrite"
 import { EventSearchQuery } from 'src/appwrite/DTO/search-event.dto';
-import { EventModel, Query } from '../interface/appwrite.model';
+import { EventModel, Event, Query, Styling, StylingModel, TicketCategoryModel, TicketCategoryView } from '../interface/appwrite.model';
 import { Logger } from "tslog";
 import TransactionPendingCollItem from '../utilities/TransactionPendingCollItem';
 
@@ -45,6 +45,10 @@ export class AppwriteService {
         this.TICKET_CATEGORIES_STYLINGS_COLLECTION_ID = this.configService.get("appwriteCollectionIdTicketCategoriesStylings");
         this.TRANSACTIONS_PENDING_COLLECTION_ID = this.configService.get("appwriteCollectionIdTransactionsPending");
         this.PERFORMANCE_LOGGING_COLLECTION_ID = this.configService.get("appwriteCollectionIdPerformanceLogging");
+    }
+
+    private getImageUrl(imageId: string) {
+        return `https://appwrite.lurent.ca/v1/storage/files/${imageId}/view?project=61fdaf9f85273`
     }
 
     initAccountClient(jwt: string) {
@@ -124,7 +128,11 @@ export class AppwriteService {
 
       const events = await this.database.listDocuments<EventModel>(this.EVENTS_COLLECTION_ID, queryParams, 5, 0, "", "", ["eventTime"], ["ASC"]);
 
-      return events.documents;
+      const formattedEvents: Event[] = await Promise.all(events.documents.map(async (e): Promise<Event> => {
+          return await this.getSingleEvent(e.$id, false)
+      }))
+
+      return formattedEvents;
 
     }
 
@@ -295,6 +303,49 @@ export class AppwriteService {
         } catch(err){
             this.log.error("error: " + err);
             throw err;
+        }
+    }
+
+    async getSingleEvent(eventId: string, includeTicketsCategories: boolean = true): Promise<Event> {
+        try {
+            const event = await this.database.getDocument<EventModel>(this.EVENTS_COLLECTION_ID, eventId);
+
+            const formattedEvent: Event = {
+                $id: event.$id,
+                name: event.name,
+                description: event.description,
+                eventTime: new Date(event.eventTime),
+                imageUrl: this.getImageUrl(event.imageId),
+                locationAddress: event.locationAddress,
+                locationCity: event.locationCity,
+                locationName: event.locationName,
+            }
+
+            if(includeTicketsCategories) {
+                const ticketCategories = await this.database.listDocuments<TicketCategoryModel>(this.TICKET_CATEGORIES_COLLECTION_ID, [Query.equal("eventId", eventId)]);
+
+                const formattedTicketCategories: TicketCategoryView[] = await Promise.all(ticketCategories.documents.map(async (category): Promise<TicketCategoryView> => {
+                    const styling = await this.database.getDocument<StylingModel>(this.TICKET_CATEGORIES_STYLINGS_COLLECTION_ID, category.stylingId);
+                    return {
+                        name: category.name,
+                        price: category.price,
+                        initialQuantity: category.initialQuantity,
+                        styling: {
+                            ...styling,
+                            backgroundImage: this.getImageUrl(styling.backgroundImage)
+                        },
+                        atomicTemplateId: category.atomicTemplateId,
+                        remainingQuantity: category.remainingQuantity,
+                        $id: category.$id
+                    }
+                }));
+
+                formattedEvent.ticketCategories = formattedTicketCategories;
+            }
+
+            return formattedEvent;
+        } catch (e) {
+            this.log.error(e)
         }
     }
 }
