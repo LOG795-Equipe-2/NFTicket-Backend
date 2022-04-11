@@ -33,6 +33,11 @@ export class AppwriteController {
     return this.appwriteService.getFeaturedEvent(city)
   }
 
+  @Get("/events/:eventId")
+  getEvent(@Param() params: { eventId: string }) {
+    return this.appwriteService.getSingleEvent(params.eventId);
+  }
+
   @Get("/tickets")
   getTicketsByAssetIds(@Query("asset-ids") assetIds: string[]) {
     return this.appwriteService.getTicketsByAssetIds(assetIds);

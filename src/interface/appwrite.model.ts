@@ -1,19 +1,59 @@
 import { Models } from "node-appwrite";
 
-export interface Event {
-    name: string;
-    locationName: string;
-    locationCity: string;
-    locationAddress: string;
-    description: string;
-    imageId: string;
-    userCreatorId: string;
-    eventTime: string;
-    atomicCollName: string;
-    bouncers: string[];
+export interface EventModel extends Models.Document {
+  name: string;
+  locationName: string;
+  locationCity: string;
+  locationAddress: string;
+  description?: string;
+  imageId?: string;
+  userCreatorId: string;
+  eventTime?: number;
+  atomicCollName?: string;
+  bouncers: string[];
 }
 
-export interface EventModel extends Models.Document, Event { }
+export interface Event {
+  $id: string;
+  name: string;
+  locationName: string;
+  locationCity: string;
+  locationAddress: string;
+  description: string;
+  imageUrl: string;
+  eventTime: Date;
+  ticketCategories?: TicketCategoryView[];
+}
+
+export interface TicketCategoryView {
+  name: string;
+  price: number;
+  styling: Styling;
+  initialQuantity: number;
+  remainingQuantity?: number;
+  atomicTemplateId?: number;
+  $id: string;
+}
+
+export interface TicketCategoryModel extends Models.Document {
+  name: string;
+  price: number;
+  stylingId: string;
+  eventId: string;
+  initialQuantity: number;
+  remainingQuantity?: number;
+  atomicTemplateId?: number;
+}
+
+export interface Styling {
+  useBorder: boolean,
+  primaryColor: string,
+  secondaryColor: string,
+  backgroundColor: string,
+  backgroundImage: string
+}
+
+export interface StylingModel extends Models.Document, Styling { }
 
 // The appwrite sdk is missing these classes, they should be removed when the issue is resolved
 type QueryTypesSingle = string | number | boolean;
