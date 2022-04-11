@@ -39,7 +39,7 @@ export class AppwriteController {
   }
 
   @Get("/tickets")
-  getTicketsByAssetIds(@Query("asset-ids") assetIds: string[]) {
-    return this.appwriteService.getTicketsByAssetIds(assetIds);
+  getTicketsByAssetIds(@Query("asset-ids") assetIds: string) {
+    return this.appwriteService.getTicketsByAssetIds(assetIds.split("-"));
   }
 }
