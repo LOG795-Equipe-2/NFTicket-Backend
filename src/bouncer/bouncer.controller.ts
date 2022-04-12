@@ -114,19 +114,35 @@ export class BouncerController {
       }
     }
 
-    //Check if assetid is valid (asset is returned by atomic asset)
-    //Check if the ticket is signed.
-    let asset = await this.bouncerService.getAssetAndCheckIfSigned(assetId, userName)
-    if(!asset) {
+    try{
+      //Check if assetid is valid (asset is returned by atomic asset)
+      let asset = await this.bouncerService.getAssetMutableData(assetId, userName)
+
+      //Check if the ticket is signed.
+      if(asset.signed == false) {
+        return {
+          success: false,
+          errorMessage: "The ticket is not signed."
+        }
+      }
+
+      // Check if the ticket is used.
+      if(asset.used !== 0) {
+        return {
+          success: false,
+          errorMessage: "The ticket has already been used."
+        }
+      }
+    } catch(err){
       return {
         success: false,
-        errorMessage: "The ticket is invalid or is not signed."
+        errorMessage: "The ticket could not be found or is invalid."
       }
     }
-
-    //TODO: Update the value of the ticket to "used"
+    
+    // At this point, the validation is complete.
     try{
-      //await this.bouncerService.setTicketAsUsed(assetId, userName)      
+      await this.bouncerService.setTicketAsUsed(assetId, userName)      
     } catch(err){
       this.log.error(err)
       return {

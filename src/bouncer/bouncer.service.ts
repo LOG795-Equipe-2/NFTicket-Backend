@@ -5,6 +5,7 @@ import { AtomicAssetsQueryService } from '../atomic-assets-query/atomic-assets-q
 import { EventModel, Query } from '../interface/appwrite.model';
 import { NfticketTransactionService } from '../nfticket-transaction/nfticket-transaction.service';
 import { Logger } from 'tslog';
+import { NfticketSchemaMutableData } from 'src/nfticket-transaction/DTO/NfticketSchemaMutableData';
 
 @Injectable()
 export class BouncerService {
@@ -118,19 +119,9 @@ export class BouncerService {
         return dbTicket.documents[0]['eventId'] == eventId;
     }
 
-    async getAssetAndCheckIfSigned(assetId, userName): Promise<boolean> {
-        let assetsInfo = await this.atomicAssetsService.getAssets(userName, 1, false, assetId)
-        if(assetsInfo.rows.length != 1){
-            return false;
-        }
-        if(assetsInfo.rows[0].asset_id != assetId){
-            return false;
-        }
-        this.log.debug('Checking if ticket is signed: ' + JSON.stringify(assetsInfo.rows[0]))
-        if(assetsInfo.rows[0].mutable_serialized_data.signed == false){
-            return false;
-        }
-        return true;
+    async getAssetMutableData(assetId, userName): Promise<NfticketSchemaMutableData> {
+        let assetMutableData = await this.nfticketTransactionService.getAssetsMutableDataFollowingSchema(userName, assetId);
+        return assetMutableData
     }
 
     async setTicketAsUsed(assetId, userName){

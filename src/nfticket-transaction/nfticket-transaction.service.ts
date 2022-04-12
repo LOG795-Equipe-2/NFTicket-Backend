@@ -21,6 +21,7 @@ import { EosTransactionRequestObject } from '../utilities/EosTransactionRequestO
 import { ValidationResponse } from '../utilities/ValidationResponse';
 import { Models } from 'node-appwrite';
 import { PerformanceAnalyserService } from '../performance-analyser/performance-analyser.service';
+import { NfticketSchemaMutableData } from './DTO/NfticketSchemaMutableData';
 
 @Injectable()
 export class NfticketTransactionService {
@@ -492,6 +493,7 @@ export class NfticketTransactionService {
                     immutable_data: [],
                     mutable_data: [
                         { key: "signed", value: [ "uint8", "0" ]},
+                        { key: "used", value: [ "uint8", "0" ]},
                     ],
                     tokens_to_back: []
             }
@@ -791,6 +793,9 @@ export class NfticketTransactionService {
     }
 
     async signTicketOnBlockchain(assetId: string, userName: string){
+        // We need to get the previous mutable data, if we want to change even just one property in the blockchain
+        let mutableDataBefore = await this.getAssetsMutableDataFollowingSchema(userName, assetId)
+
         let transactionObject = {
             account: this.atomicAssetContractAccountName,
             name: 'setassetdata',
@@ -800,6 +805,7 @@ export class NfticketTransactionService {
                     asset_id: assetId,
                     new_mutable_data: [
                         { key: "signed", value: [ "uint8", "1" ]},
+                        { key: "used", value: [ "uint8", mutableDataBefore.used ]},
                     ]
             }
         }
@@ -811,7 +817,29 @@ export class NfticketTransactionService {
         }
     }
 
+    async getAssetsMutableDataFollowingSchema(userName: string, assetId: string): Promise<NfticketSchemaMutableData>{
+            // We need to get the previous mutable data, if we want to change even just one property in the blockchain
+            let assetBefore = await this.atomicAssetsService.getAssets(userName, 1, false, assetId)
+            if(assetBefore.rows.length != 1 || assetBefore.rows[0].asset_id != assetId){
+                let message = "Element with assetID: " + assetId + " for user: " + userName + " could not be found on blockchain."
+                this.log.error(message)
+                throw new Error(message);
+            }
+            // Fix if the property was not setted
+            if(!assetBefore.rows[0].mutable_serialized_data.signed){
+                assetBefore.rows[0].mutable_serialized_data.signed = 0
+            }
+            if(!assetBefore.rows[0].mutable_serialized_data.used){
+                assetBefore.rows[0].mutable_serialized_data.used = 0
+            }
+
+            return assetBefore.rows[0].mutable_serialized_data;
+    }
+
     async setTicketUsedOnBlockchain(assetId: string, userName: string){
+        // We need to get the previous mutable data, if we want to change even just one property in the blockchain
+        let mutableDataBefore = await this.getAssetsMutableDataFollowingSchema(userName, assetId)
+
         let transactionObject = {
             account: this.atomicAssetContractAccountName,
             name: 'setassetdata',
@@ -820,6 +848,7 @@ export class NfticketTransactionService {
                     asset_owner: userName,
                     asset_id: assetId,
                     new_mutable_data: [
+                        { key: "signed", value: [ "uint8", mutableDataBefore.signed ]},
                         { key: "used", value: [ "uint8", "1" ]},
                     ]
             }
