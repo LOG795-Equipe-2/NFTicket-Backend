@@ -399,50 +399,9 @@ export class NfticketTransactionController {
         }
     }
 
-    @ApiOperation({ summary: 'TODO'})
-    @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
-    @ApiQuery({ name: 'assetId', description: 'The ID of the ticket to sign.'})
-    @ApiTags(SwaggerApiTags.ACTIONS)
-    @Post(TransactionRoutes.ACTIONS + '/controlTicket')
-    async postControlTicket(@Body() completeTransaction: any,
-            @Query('assetId') assetId: string,
-            @Query('userName') userName: string): Promise<ApiResponse>{
-        let transactionType = TransactionType.CONTROL_TICKET
-        
-        return {
-            success: false,
-            errorMessage: "Not implemented yet"
-        };    
-    }
-
-    @ApiOperation({ summary: 'Create the transactions that the user have to sign in order to create the templates for ticket catgories', 
-    description: 'It will include the transactions to create the schema and collections if they not already on the blockchain.' })
-    @ApiTags(SwaggerApiTags.VALIDATE)
-    @Post(TransactionRoutes.VALIDATE + '/controlTicket')
-    async postValidateControlTicket(@Body() transactionValidation: any){
-        let transactionType = TransactionType.CONTROL_TICKET
-
-        return {
-            success: false,
-            errorMessage: "Not implemented yet"
-        }
-    }
-
-
-
     @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })
     @Post('/validateTransaction')
     async postValidateTransactions(@Body() transactionValidation: any): Promise<ApiResponse>{
-        if(transactionValidation.transactionId == '' || transactionValidation.transactionId == null ||
-            transactionValidation.transactionType == '' || transactionValidation.transactionType == null ||
-            transactionValidation.transactionsBody == null || transactionValidation.transactionsBody == [] ||
-            transactionValidation.userName == '' || transactionValidation.userName == null){
-            return {
-                success: false,
-                errorMessage: "Error while validating the transactions. Transaction is invalid. Possible invalid fields: transactionId, transactionType, transactionsBody, userName"
-            }
-        }
-
         return {
             success: false,
             errorMessage: "Deprecated route"

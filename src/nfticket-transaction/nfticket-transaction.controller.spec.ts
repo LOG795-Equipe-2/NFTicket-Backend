@@ -213,7 +213,8 @@ describe('NfticketTransactionController', () => {
           {"name": "originalDateTime", "type": "string"}, 
           {"name": "originalPrice", "type": "string"}, 
           {"name": "categoryName", "type": "string"}, 
-          {"name": "signed", "type": "bool"}
+          {"name": "signed", "type": "bool"},
+          {"name": "used", "type": "uint8"}
         ], 
         "schema_name": "ticket"
       }
