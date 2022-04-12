@@ -123,8 +123,9 @@ export class NfticketTransactionController {
 
         let transactionPendingInfo = null;
         try{
+            // Get TransactionPendingInfo returns an error if no entry was found
             transactionPendingInfo = await this.nfticketTransactionService.getTransactionPendingInfo(transactionValidation.transactionPendingId);
-            if(transactionPendingInfo == null)
+            if(transactionPendingInfo.data == null)
                 throw Error();
         } catch (err){
             return {
@@ -133,7 +134,7 @@ export class NfticketTransactionController {
             }
         }
         
-        let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionValidation.transactionPendingId)
+        let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionPendingInfo)
         if(!isTransactionPendingNotExpired){
             // Remove information about the pending transaction to save space in DB.
             this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
@@ -161,10 +162,11 @@ export class NfticketTransactionController {
             await this.nfticketTransactionService.pushTransaction(transactionValidation.signatures, transactionValidation.serializedTransaction)
         } catch(err){
             //An error happend
-            this.log.error("An error has happened while trying to push the transaction to the blockchain: " + err.message)
+            let message = "An error has happened while trying to push the transaction to the blockchain"
+            this.log.error(message + ": " + err.message)
             return {
                 success: false,
-                errorMessage: "An error has happened while trying to push the transaction to the blockchain, please retry."
+                errorMessage: message + ", please retry."
             }
         }
         let templateInformations = await this.nfticketTransactionService.extractTemplateObjectFromTrx(collName, transactionPendingInfo.data)
@@ -239,7 +241,7 @@ export class NfticketTransactionController {
         this.log.info("Entering into postValidateBuyTickets");
 
         let transactionPendingInfo = await this.nfticketTransactionService.getTransactionPendingInfo(transactionValidation.transactionPendingId);
-        let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionValidation.transactionPendingId)
+        let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionPendingInfo)
         if(!isTransactionPendingNotExpired){
             this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
             return {
@@ -350,7 +352,7 @@ export class NfticketTransactionController {
         this.log.info("Entering into postValidateSignTicket");
         
         let transactionPendingInfo = await this.nfticketTransactionService.getTransactionPendingInfo(transactionValidation.transactionPendingId);
-        let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionValidation.transactionPendingId)
+        let isTransactionPendingNotExpired = await this.nfticketTransactionService.validateTransactionPendingDate(transactionPendingInfo)
         if(!isTransactionPendingNotExpired){
             this.nfticketTransactionService.deleteTransactionPendingInfo(transactionValidation.transactionPendingId)
             return {

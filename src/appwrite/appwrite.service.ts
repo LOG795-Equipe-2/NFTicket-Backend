@@ -18,6 +18,8 @@ import {
   StylingModel,
   TicketCategoryModel,
   TicketCategoryView,
+  TransactionsPendingModel,
+  TicketModel,
 } from '../interface/appwrite.model';
 import { Logger } from 'tslog';
 import TransactionPendingCollItem from '../utilities/TransactionPendingCollItem';
@@ -190,10 +192,10 @@ export class AppwriteService {
    * @param ticketCategoryId
    * @returns
    */
-  async getTicketsAvailable(ticketCategoryId: string) {
+  async getTicketsAvailable(ticketCategoryId: string): Promise<TicketModel[]> {
     let dateTimeNow = new Date().getTime();
     try {
-      let response = await this.database.listDocuments(
+      let response = await this.database.listDocuments<TicketModel>(
         this.TICKETS_COLLECTION_ID,
         [
           Query.equal('categoryId', ticketCategoryId),
@@ -226,9 +228,9 @@ export class AppwriteService {
     }
   }
 
-  async getTicketCategory(ticketCategoryId: string) {
+  async getTicketCategory(ticketCategoryId: string): Promise<TicketCategoryModel> {
     try {
-      let response = await this.database.getDocument(
+      let response = await this.database.getDocument<TicketCategoryModel>(
         this.TICKET_CATEGORIES_COLLECTION_ID,
         ticketCategoryId,
       );
@@ -296,9 +298,9 @@ export class AppwriteService {
     }
   }
 
-  async getTransactionPendingInfo(transactionPendingId: string) {
+  async getTransactionPendingInfo(transactionPendingId: string) : Promise<TransactionsPendingModel> {
     try {
-      let response = await this.database.getDocument(
+      let response = await this.database.getDocument<TransactionsPendingModel>(
         this.TRANSACTIONS_PENDING_COLLECTION_ID,
         transactionPendingId,
       );

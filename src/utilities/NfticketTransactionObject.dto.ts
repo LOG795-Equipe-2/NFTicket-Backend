@@ -10,7 +10,7 @@ export class NfticketTransactionObject {
     signatures?: string[];
 
     @IsNotEmpty()
-    serializedTransaction?: string[];
+    serializedTransaction?: any;
 
     @IsString()
     transactionType: string;

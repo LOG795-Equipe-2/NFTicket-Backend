@@ -22,6 +22,7 @@ import { ValidationResponse } from '../utilities/ValidationResponse';
 import { Models } from 'node-appwrite';
 import { PerformanceAnalyserService } from '../performance-analyser/performance-analyser.service';
 import { NfticketSchemaMutableData } from './DTO/NfticketSchemaMutableData';
+import { TicketModel, TransactionsPendingModel } from 'src/interface/appwrite.model';
 
 @Injectable()
 export class NfticketTransactionService {
@@ -83,10 +84,10 @@ export class NfticketTransactionService {
         return transaction.$id
     }
 
-    async getTransactionPendingInfo(transactionPendingId){
-        let transactionPendingInfo = await this.appwriteService.getTransactionPendingInfo(transactionPendingId);
-        if(transactionPendingInfo['data'] != null){
-            transactionPendingInfo['data'] = JSON.parse(transactionPendingInfo['data'])
+    async getTransactionPendingInfo(transactionPendingId): Promise<any>{
+        let transactionPendingInfo = await this.appwriteService.getTransactionPendingInfo(transactionPendingId) as TransactionsPendingModel;
+        if(transactionPendingInfo.data != null){
+            transactionPendingInfo.data = JSON.parse(transactionPendingInfo.data)
         }
         return transactionPendingInfo
     }
@@ -100,10 +101,11 @@ export class NfticketTransactionService {
         return transactionPendingInfo
     }
 
-    async validateTransactionPendingDate(transactionPendingId): Promise<boolean>{
-        let transactionPendingInfo = await this.getTransactionPendingInfo(transactionPendingId);
-        let expirationDate = transactionPendingInfo['expirationDate'] as number;
-
+    async validateTransactionPendingDate(transactionPendingInfo: TransactionsPendingModel): Promise<boolean>{
+        let expirationDate = transactionPendingInfo.expirationDate;
+        if(!expirationDate){
+            return false;
+        }
         let dateNow = new Date().getTime()
         if(expirationDate < dateNow){
             return false;
@@ -273,7 +275,7 @@ export class NfticketTransactionService {
         return result
     }
 
-    async deserializeTransactionsActions(serializedTransaction){
+    async deserializeTransactionsActions(serializedTransaction): Promise<any>{
         const rpc = new JsonRpc(this.blockchainUrl, { fetch });
         const api = new Api({ rpc })
 
@@ -404,7 +406,7 @@ export class NfticketTransactionService {
         return transactions
     }
 
-    async getRemainingTickets(ticketCategoryId: string) {
+    async getRemainingTickets(ticketCategoryId: string): Promise<TicketModel[]> {
         let ticketsNotSold = await this.appwriteService.getTicketsAvailable(ticketCategoryId)
         return ticketsNotSold;        
     }
@@ -432,8 +434,8 @@ export class NfticketTransactionService {
 
     async createBuyTransaction(userName: string, ticketCategoryId: string): Promise<EosTransactionRequestObject[]>{
         let ticketCategory = await this.appwriteService.getTicketCategory(ticketCategoryId)
-        let ticketPrice = parseFloat(ticketCategory['price']);
-        let eventId = ticketCategory['eventId']
+        let ticketPrice = ticketCategory.price;
+        let eventId = ticketCategory.eventId;
 
         let transactions: EosTransactionRequestObject[] = [];
         if(ticketPrice > 0){
@@ -549,7 +551,7 @@ export class NfticketTransactionService {
      */
     async addToTicketCount(ticketCategoryId, ticketCount){
         let ticketCategory = await this.appwriteService.getTicketCategory(ticketCategoryId)
-        let ticketCategoryCount = parseInt(ticketCategory['remainingQuantity'])
+        let ticketCategoryCount = ticketCategory.remainingQuantity
         let newQuantity = ticketCategoryCount + ticketCount
         await this.appwriteService.updateTicketCategory(ticketCategoryId, {remainingQuantity: newQuantity})
     }
