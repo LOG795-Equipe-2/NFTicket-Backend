@@ -27,6 +27,15 @@ export class AtomicAssetsQueryController {
         } 
     }
 
+    @Get('/schemas/:collName/:schemaName')
+    async getSchemas(@Param() params): Promise<ApiResponse> {
+        let collections = await this.atomicAssetsQueryService.getSchemas(params.collName, params.schemaName);
+        return {
+            success: true,
+            data: collections
+        } 
+    }
+
     @Get('/templates/:coll_name/:template_id')
     async getTemplate(@Param() params): Promise<ApiResponse> {
         let templates = await this.atomicAssetsQueryService.getTemplates(params.coll_name, params.template_id, 1);

@@ -45,6 +45,22 @@ export interface TicketCategoryModel extends Models.Document {
   atomicTemplateId?: number;
 }
 
+export interface TicketModel extends Models.Document {
+  categoryId: string;
+  assetId?: string;
+  ticketNumber: number;
+  eventId: string;
+  isSold?: boolean;
+  reservedUntil?: number;
+}
+
+export interface TransactionsPendingModel extends Models.Document {
+  eosUserName: string;
+  transactionType: number;
+  expirationDate: number;
+  data: string;
+}
+
 export interface Styling {
   useBorder: boolean,
   primaryColor: string,
