@@ -6,9 +6,9 @@
 # Note: For long iterations, consider increasing the unlock-timeout of keosd
 
 EOS_ENDPOINT="http://your-blockchain-endpoint"
-ACCOUNT_NAME="account_name"
+ACCOUNT_NAME="account-name"
 AUTHORIZED_MINTER=\"${ACCOUNT_NAME}\"
-COLLECTION_NAME=\"${ACCOUNT_NAME}\"
+COLLECTION_NAME=\"collection-name\"
 NEW_ASSET_OWNER=\"${ACCOUNT_NAME}\"
 # Template-based asset minting
 #SCHEMA_NAME=\"withtemplate\"
@@ -21,36 +21,26 @@ NEW_ASSET_OWNER=\"${ACCOUNT_NAME}\"
 MUTABLE_DATA='[{"key":"signed", "value": ["uint8", "0"]}]'
 NB_TICKETS=1
 
-INITIAL_CPU_USAGE=$(cleos --url=$EOS_ENDPOINT get account $ACCOUNT_NAME --json | jq -r '. | .cpu_limit.available')
-INITIAL_NET_USAGE=$(cleos --url=$EOS_ENDPOINT get account $ACCOUNT_NAME --json | jq -r '. | .net_limit.available')
 INITIAL_RAM_USAGE=$(cleos --url=$EOS_ENDPOINT get account $ACCOUNT_NAME --json | jq -r '. | .ram_usage')
+CPU_USAGE=0
+NET_USAGE=0
 
 SECONDS=0
 for ((i=0; i < $NB_TICKETS; i++))
 do
-    cleos --url=$EOS_ENDPOINT push action atomicassets mintasset '['"$AUTHORIZED_MINTER"', '"$COLLECTION_NAME"', '"$SCHEMA_NAME"', '"$TEMPLATE_ID"', '"$NEW_ASSET_OWNER"', '"$IMMUTABLE_DATA"', '"$MUTABLE_DATA"', []]' -f -p $ACCOUNT_NAME@active >/dev/null 2>&1
+   CPU_NET_DATA=$(cleos --url=$EOS_ENDPOINT push action atomicassets mintasset '['"$AUTHORIZED_MINTER"', '"$COLLECTION_NAME"', '"$SCHEMA_NAME"', '"$TEMPLATE_ID"', '"$NEW_ASSET_OWNER"', '"$IMMUTABLE_DATA"', '"$MUTABLE_DATA"', []]' --json -f -p $ACCOUNT_NAME@active | jq -r '. | .processed.receipt.cpu_usage_us, .processed.net_usage' | tr '\n' ' ')
+   CPU_USAGE=$((CPU_USAGE+$(echo $CPU_NET_DATA | cut -d ' ' -f1)))
+   NET_USAGE=$((NET_USAGE+$(echo $CPU_NET_DATA | cut -d ' ' -f2)))
     if [ $(($i % 100)) -eq 0 ]; then
      echo "to iteration: "$i
     fi
 done
 DURATION=$SECONDS
 
-FINAL_CPU_USAGE=$(cleos --url=$EOS_ENDPOINT get account $ACCOUNT_NAME --json | jq -r '. | .cpu_limit.available')
-FINAL_NET_USAGE=$(cleos --url=$EOS_ENDPOINT get account $ACCOUNT_NAME --json | jq -r '. | .net_limit.available')
 FINAL_RAM_USAGE=$(cleos --url=$EOS_ENDPOINT get account $ACCOUNT_NAME --json | jq -r '. | .ram_usage')
+let RAM_USAGE=$FINAL_RAM_USAGE-$INITIAL_RAM_USAGE
 
-let CPU_CONSUMED=$INITIAL_CPU_USAGE-$FINAL_CPU_USAGE
-let NET_CONSUMED=$INITIAL_NET_USAGE-$FINAL_NET_USAGE
-let RAM_CONSUMED=$FINAL_RAM_USAGE-$INITIAL_RAM_USAGE
-
-echo "CPU consumed: $CPU_CONSUMED µs"
-echo "NET consumed: $NET_CONSUMED bytes"
-echo "RAM consumed: $RAM_CONSUMED bytes"
+echo "CPU consumed: $CPU_USAGE µs"
+echo "NET consumed: $NET_USAGE bytes"
+echo "RAM consumed: $RAM_USAGE bytes"
 echo "Total duration time in seconds: $DURATION"
-
-curl --data-urlencode "chat_id=709432417" \
-     --data-urlencode "text=The consumption test for $NB_TICKETS tickets is done on server $HOSTNAME
-     
-CPU consumed: $CPU_CONSUMED µs
-NET consumed: $NET_CONSUMED bytes
-RAM consumed: $RAM_CONSUMED bytes
