@@ -23,7 +23,6 @@ enum SwaggerApiTags{
 
 @ApiTags('transactions')
 @Controller('transactions')
-@UseGuards(AppwriteGuard)
 @ApiHeader({
     name: 'nfticket-appwrite-jwt',
     description: 'JWT token from Appwrite',
@@ -47,6 +46,7 @@ export class NfticketTransactionController {
     @ApiOperation({ summary: 'Gives the Collection Name that has been assigned to the user.' })
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @ApiTags(SwaggerApiTags.UTILITY)
+    @UseGuards(AppwriteGuard)
     @Get(TransactionRoutes.UTILITY + '/getCollNameForUser')
     getCollNameForUser(@Query('userName') userName: string): ApiResponse{
         return {
@@ -57,6 +57,7 @@ export class NfticketTransactionController {
 
     @ApiOperation({ summary: 'Receive parameters to use to connect to the blockchain' })
     @ApiTags(SwaggerApiTags.UTILITY)
+    @UseGuards(AppwriteGuard)
     @Delete(TransactionRoutes.UTILITY + '/deleteTransactionsPendingExpired')
     async deleteAllTransactionsPending(@Headers('X-Appwrite-Project') appwriteProjectId: string, @Headers('X-Appwrite-Key') appwriteAdminKey: string): Promise<ApiResponse> {
         if(typeof appwriteProjectId === "undefined" || appwriteProjectId !== this.configService.get<string>('appwriteProjectId')
@@ -81,6 +82,7 @@ export class NfticketTransactionController {
                     description: 'It will include the transactions to create the schema and collections if they not already on the blockchain.' })
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @ApiTags(SwaggerApiTags.ACTIONS)
+    @UseGuards(AppwriteGuard)
     @Post(TransactionRoutes.ACTIONS + '/createTickets')
     @UsePipes(new ValidationPipe({ transform: false }))
     async postActionsCreateTicket(@Body() ticketsReq: TicketsQuery,
@@ -116,6 +118,7 @@ export class NfticketTransactionController {
     @ApiOperation({ summary: 'Broadcast the transactions that the user sign to create the templates for ticket catgories' })
     @UsePipes(new ValidationPipe())
     @ApiTags(SwaggerApiTags.VALIDATE)
+    @UseGuards(AppwriteGuard)
     @Post(TransactionRoutes.VALIDATE + '/createTickets')
     async postValidateCreateTicket(@Body() transactionValidation: NfticketTransactionObject): Promise<ApiResponse>{
         let transactionType = TransactionType.CREATE_TICKET;
@@ -187,6 +190,7 @@ export class NfticketTransactionController {
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @ApiQuery({ name: 'ticketCategoryId', description: 'The ID of the category to buy a ticket from.'})
     @ApiTags(SwaggerApiTags.ACTIONS)
+    @UseGuards(AppwriteGuard)
     @UsePipes(new ValidationPipe())
     @Post(TransactionRoutes.ACTIONS + '/buyTickets')
     async postActionsBuyTicket(@Query('ticketCategoryId') ticketCategoryId: string,
@@ -234,6 +238,7 @@ export class NfticketTransactionController {
     */
     @ApiOperation({ summary: 'Save the buying transactions for the tickets specified and saves the elements in the database' })
     @ApiTags(SwaggerApiTags.VALIDATE)
+    @UseGuards(AppwriteGuard)
     @UsePipes(new ValidationPipe())
     @Post(TransactionRoutes.VALIDATE + '/buyTickets')
     async postValidateBuyTickets(@Body() transactionValidation: NfticketTransactionObject): Promise<ApiResponse>{
@@ -298,6 +303,7 @@ export class NfticketTransactionController {
     @ApiQuery({ name: 'userName', description: 'Name of EOS account on the blockchain.'})
     @ApiQuery({ name: 'assetId', description: 'The ID of the ticket to sign.'})
     @ApiTags(SwaggerApiTags.ACTIONS)
+    @UseGuards(AppwriteGuard)
     @Post(TransactionRoutes.ACTIONS + '/signTicket')
     async postActionsSignTicket(@Query('assetId') assetId: string,
             @Query('userName') userName: string): Promise<ApiTransactionsActionsResponse>{
@@ -345,6 +351,7 @@ export class NfticketTransactionController {
     @ApiOperation({ summary: 'Check that the transaction was validated by the user, and sign the ticket on the blockchain.',
         description: 'Signing the ticket on the blockchain means changing the value of the property \'signed\' on the NFT.' })
     @ApiTags(SwaggerApiTags.VALIDATE)
+    @UseGuards(AppwriteGuard)
     @UsePipes(new ValidationPipe())
     @Post(TransactionRoutes.VALIDATE + '/signTicket')
     async postValidateSignTicket(@Body() transactionValidation: NfticketTransactionObject){
@@ -403,6 +410,7 @@ export class NfticketTransactionController {
 
     @ApiOperation({ summary: 'Inform the backend that a transaction has been correctly signed' })
     @Post('/validateTransaction')
+    @UseGuards(AppwriteGuard)
     async postValidateTransactions(@Body() transactionValidation: any): Promise<ApiResponse>{
         return {
             success: false,
