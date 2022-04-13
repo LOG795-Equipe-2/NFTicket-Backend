@@ -339,11 +339,16 @@ export class AppwriteService {
     }
   }
 
-  async getTicketsByAssetIds(assetIds: string[]) {
+  async getTicketsByAssetIds(assetIds: string[], limit = 25, offset = 0) {
     try {
       let response = await this.database.listDocuments(
         this.TICKETS_COLLECTION_ID,
         [Query.equal('assetId', assetIds)],
+        limit, offset,
+        null,
+        null,
+        ['assetId'],
+        ['DESC'],
       );
       const documentsWithCategories = Promise.all(
         response.documents.map(async (document: any) => {
