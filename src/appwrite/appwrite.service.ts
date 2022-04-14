@@ -170,7 +170,7 @@ export class AppwriteService {
     const events = await this.database.listDocuments<EventModel>(
       this.EVENTS_COLLECTION_ID,
       queryParams,
-      5,
+      12,
       0,
       '',
       '',
