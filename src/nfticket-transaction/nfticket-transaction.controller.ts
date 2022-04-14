@@ -258,7 +258,6 @@ export class NfticketTransactionController {
         let ticketIsFree = false;
         if(transactionPendingInfo['data'][0] == null){
             let price = await this.nfticketTransactionService.getTicketPrice(transactionPendingInfo['data'].choosenTicketId)
-            console.log('price: ' + price)
             if(price !== 0){
                 ticketIsFree = false;
                 return {
