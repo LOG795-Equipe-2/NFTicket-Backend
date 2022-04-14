@@ -91,6 +91,18 @@ export class BouncerController {
     }
   }
 
+  @ApiOperation({summary: "deletes 1 bouncer", description: "removes a bouncer if from the list of available bouncer ids"})
+  @ApiParam({name: "enventId"})
+  @ApiParam({name: "bouncer"})
+  @Post("/:eventId/:bouncer/deleteBouncer")
+  async deleteSelfBouncer(@Param() params: { eventId: string, bouncer: string }, @Body() b: any): Promise<ApiResponse> {
+    const success = await this.bouncerService.deleteBouncer(params.eventId, params.bouncer)
+
+    return {
+      success
+    }
+  }
+
   @ApiOperation({summary: "deletes a bouncer", description: "removes a bouncer if from the list of available bouncer ids"})
   @ApiParam({name: "enventId"})
   @ApiBody({description: "needs bouncer field"})
