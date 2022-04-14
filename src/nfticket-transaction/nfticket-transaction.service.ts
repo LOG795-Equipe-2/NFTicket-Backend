@@ -863,6 +863,13 @@ export class NfticketTransactionService {
         }
     }
 
+    async getTicketPrice(ticketId: string): Promise<number> {
+        let ticket = await this.appwriteService.getTicket(ticketId)
+        let ticketCategory = await this.appwriteService.getTicketCategory(ticket.categoryId)
+        
+        return ticketCategory.price
+    }
+
     /**
      * Validates that a transaction has status Executed, and returns the associated actions.
      * 
