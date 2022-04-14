@@ -255,25 +255,43 @@ export class NfticketTransactionController {
             }
         }
 
-        // Validate that the buy function worked.
-        let transactionData = transactionPendingInfo['data'][0].data
-        let buyTransactionIsValidated = this.nfticketTransactionService.validateBuyTicketsSignedTransaction(transactionValidation.signatures, transactionPendingInfo['eosUserName'], transactionValidation.serializedTransaction, transactionData.quantity)
-        if(!buyTransactionIsValidated){
-            return {
-                success: false,
-                errorMessage: "The transfer broadcasting failed. Please redo the transaction."
+        let ticketIsFree = false;
+        if(transactionPendingInfo['data'][0] == null){
+            let price = await this.nfticketTransactionService.getTicketPrice(transactionPendingInfo['data'].choosenTicketId)
+            console.log('price: ' + price)
+            if(price !== 0){
+                ticketIsFree = false;
+                return {
+                    success: false,
+                    errorMessage: "The transactions sent is invalid. Please retry."
+                }
+            } else {
+                ticketIsFree = true;
             }
         }
 
-        // Broadcast the transaction to the blockchain
-        try{
-            await this.nfticketTransactionService.pushTransaction(transactionValidation.signatures, transactionValidation.serializedTransaction)
-        } catch(err){
-            //An error happend
-            this.log.error("An error has happened while trying to push the transaction to the blockchain: " + err.message)
-            return {
-                success: false,
-                errorMessage: "An error has happened while trying to push the transaction to the blockchain, please retry."
+        // Do not broadcast the transaction and check for the transaction if the ticket is free.
+        if(!ticketIsFree){
+            // Validate that the buy function worked.
+            let transactionData = transactionPendingInfo['data'][0].data
+            let buyTransactionIsValidated = this.nfticketTransactionService.validateBuyTicketsSignedTransaction(transactionValidation.signatures, transactionPendingInfo['eosUserName'], transactionValidation.serializedTransaction, transactionData.quantity)
+            if(!buyTransactionIsValidated){
+                return {
+                    success: false,
+                    errorMessage: "The transfer broadcasting failed. Please redo the transaction."
+                }
+            }
+
+            // Broadcast the transaction to the blockchain
+            try{
+                await this.nfticketTransactionService.pushTransaction(transactionValidation.signatures, transactionValidation.serializedTransaction)
+            } catch(err){
+                //An error happend
+                this.log.error("An error has happened while trying to push the transaction to the blockchain: " + err.message)
+                return {
+                    success: false,
+                    errorMessage: "An error has happened while trying to push the transaction to the blockchain, please retry."
+                }
             }
         }
 

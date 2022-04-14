@@ -255,9 +255,9 @@ export class AppwriteService {
     }
   }
 
-  async getTicket(ticketId: string) {
+  async getTicket(ticketId: string): Promise<TicketModel> {
     try {
-      let response = await this.database.getDocument(
+      let response = await this.database.getDocument<TicketModel>(
         this.TICKETS_COLLECTION_ID,
         ticketId,
       );
