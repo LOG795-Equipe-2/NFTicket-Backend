@@ -5,6 +5,10 @@
 
 On utilise le package `@nestjs/config` pour charger un fichier .env. [Tutoriel](https://docs.nestjs.com/techniques/configuration) sur comment avoir accès aux variables
 
+## Dependencies
+
+- [Appwrite](https://appwrite.io/) Instance with HTTPS and SMTP enabled
+
 ## Variables nécessaires dans les variables d'environnement (fichier .env)
 
 ### URL Blockchain EOS
