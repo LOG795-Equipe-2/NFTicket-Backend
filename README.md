@@ -7,7 +7,8 @@ On utilise le package `@nestjs/config` pour charger un fichier .env. [Tutoriel](
 
 ## Dependencies
 
-- [Appwrite](https://appwrite.io/) Instance with HTTPS and SMTP enabled
+- [Appwrite](https://appwrite.io/) Instance with HTTPS and SMTP enabled.
+- EOS Blockchain Node that you can connect to.
 
 ## Variables nécessaires dans les variables d'environnement (fichier .env)
 
