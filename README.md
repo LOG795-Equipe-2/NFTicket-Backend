@@ -3,7 +3,7 @@
 
 ## Configuration
 
-On utilise le package `@nestjs/config` pour charger un fichier .env. [Tutoriel](https://docs.nestjs.com/techniques/configuration) sur comment avor accès aux variables
+On utilise le package `@nestjs/config` pour charger un fichier .env. [Tutoriel](https://docs.nestjs.com/techniques/configuration) sur comment avoir accès aux variables
 
 ## Variables nécessaires dans les variables d'environnement (fichier .env)
 
